@@ -1,6 +1,6 @@
 # Huananzhi X99-TF — модифицированный BIOS (GHX99015, 25.05.2020)
 
-Набор готовых прошивок для **HUANANZHI X99-TF**: анлок Turbo Boost для Xeon E5 v3, андервольт, расшитые лимиты питания, ReBAR, Secure Boot, TPM 2.0 и тихая кривая вентилятора. 4 тира андервольта × 3 режима = 12 сборок.
+Набор готовых прошивок для **HUANANZHI X99-TF** на базе сборки от [Koshak1013](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`GHX99015`, 25.05.2020): анлок Turbo Boost для Xeon E5 v3, андервольт, расшитые лимиты питания, ReBAR, Secure Boot, TPM 2.0 и тихая кривая вентилятора. 4 тира андервольта × 3 режима = 12 сборок.
 
 *English summary is at the bottom.*
 
@@ -18,7 +18,7 @@
 
 | | |
 | :--- | :--- |
-| **База** | `GHX99015` от 25.05.2020 (сборка Koshak1013 / `kot_v011`). Если у вас уже стоит эта версия или стоковая `GHX99014`/`GHX99015` — прошивка встанет без сюрпризов. |
+| **База** | `GHX99015` от 25.05.2020 — доработка на базе [Koshak1013/HuananzhiX99_BIOS_mods](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`Huananzhi X99-TF / 2020-05-25`, `kot_v011`). Если у вас уже стоит эта версия или стоковая `GHX99014`/`GHX99015` — прошивка встанет без сюрпризов. |
 | **Xeon E5 v3** | Микрокод `306F2` удалён + `ser8989_S3TurboHack` → Turbo Boost Unlock на все ядра + выбранный андервольт. |
 | **Xeon E5 v4** | Микрокод `406F1` rev `0xB000040` сохранён, v4 работают штатно (анлок и андервольт на v4 не действуют — ограничение Intel). |
 | **Питание** | Сняты зажимы RAPL в `PpmInitialize`; `PL1 = 200 W`, `PL2 = 250 W`, `Tau = 56 s`, `IccMax = 160 A`, все ядра активны. |
@@ -190,7 +190,7 @@ Get-FileHash .\03_UV_50_50_Balanced\2_UEFI_SB\*.bin -Algorithm SHA256
 
 * **Download everything at once:** [Releases](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v1.0.zip`, or grab individual files from the folders.
 * **For HUANANZHI X99-TF (`GHX99014` / `GHX99015`) only.** Do not flash onto any other X99 board — high risk of a brick that needs a CH341A programmer to recover.
-* Base: `GHX99015` (05/25/2020, Koshak1013 / `kot_v011`). Xeon E5 v3: `306F2` microcode removed + `ser8989_S3TurboHack` all-core turbo unlock with undervolt; E5 v4 microcode `406F1` rev `0xB000040` kept.
+* Base: `GHX99015` (05/25/2020), extended mod based on [Koshak1013/HuananzhiX99_BIOS_mods](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`Huananzhi X99-TF / 2020-05-25`, `kot_v011`). Xeon E5 v3: `306F2` microcode removed + `ser8989_S3TurboHack` all-core turbo unlock with undervolt; E5 v4 microcode `406F1` rev `0xB000040` kept.
 * **Power limits unlocked** (`PL1 200 W`, `PL2 250 W`, `Tau 56 s`, `IccMax 160 A`) — keep the VRM cooled. Lower PL1/PL2 in `IntelRCSetup → Advanced Power Management Configuration → SOCKET RAPL Config`. On 14–18-core Xeons you can also cap `Cores Enabled` (e.g. `12` on an 18-core CPU for cooler VRM and steadier gaming boost, trading away full multi-thread render throughput). **Do not set `Power Technology` to `Custom`.**
 * Folders: `<undervolt tier>/<mode>/`. Tiers: `0/0`, `−40/−30`, `−50/−50` (recommended), `−70/−50` mV. Modes: `1_Legacy` (CSM), `2_UEFI_SB` (UEFI + ReBAR + Secure Boot), `3_UEFI_SB_TPM` (+ TPM 2.0). Secure Boot and TPM are not in the BIOS menu — choose the mode at flash time.
 * Flash with `flash.bat` (as admin): it backs up first (full 16 MB if allowed, otherwise the 8 MB BIOS region), waits for you to copy the backup, then writes **only the 8 MB BIOS region** and verifies it. `*_16MB_CH341A.bin` files are for an external programmer only.
