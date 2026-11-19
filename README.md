@@ -5,7 +5,7 @@
 *English summary is at the bottom.*
 
 > [!TIP]
-> **Скачать всё одним архивом:** [страница Releases](../../releases/latest) → файл `X99TF_GHX99015_BIOS_Pack_v1.0.zip`. Или берите отдельные файлы прямо из папок ниже.
+> **Скачать всё одним архивом:** [страница Releases](../../releases/latest) → файл `X99TF_GHX99015_BIOS_Pack_v1.1.zip`. Или берите отдельные файлы прямо из папок ниже.
 
 > [!CAUTION]
 > **Только для HUANANZHI X99-TF (`GHX99014` / `GHX99015`).** Не шейте на другие платы X99 (Machinist, Kllisre, Qiyida, Jingsha, другие модели Huananzhi и т.д.): у них другие Flash Descriptor, разводка памяти, Super I/O, GPIO и линии PCIe — высокий риск «кирпича» с восстановлением только программатором.
@@ -109,7 +109,15 @@ mbr2gpt /convert /disk:0 /allowFullOS
 **ReBAR.** На видеокартах без поддержки Resizable BAR (GTX 10/16, RTX 20) драйвер `ReBarDxe` просто пропускает карту. Если прошили `1_Legacy`, а потом перешли на GPT/UEFI: в BIOS поставьте `CSM Support = Disabled`, `Above 4G Decoding = Enabled`, затем запустите **`Enable_ReBAR_Windows.bat`** от администратора.
 * **Как проверить ReBAR:** откройте **GPU-Z** → строка **`Resizable BAR`** на главной вкладке должна показывать **`Enabled`** (по клику на `Enabled` откроются детали по BIOS и диапазонам BAR). На NVIDIA также видно в *Панели управления NVIDIA → Справка → Информация о системе → Изменяемый размер BAR: Да*.
 
-**Ключи Secure Boot.** В прошивке вшиты стандартные ключи (AMI Test PK, Microsoft KEK/UEFI CA 2011, Windows Production PCA 2011) — сама Windows грузится сразу.
+**Ключи Secure Boot (2011 + 2023).** В `2_UEFI_SB` и `3_UEFI_SB_TPM` вшиты оба поколения ключей Microsoft — **2011** (`KEK CA 2011`, `UEFI CA 2011`, `Windows Production PCA 2011`) и актуальные **2023** (`KEK 2K CA 2023`, `Windows UEFI CA 2023`, `Microsoft UEFI CA 2023`, `Microsoft Option ROM UEFI CA 2023`), плюс `AMI Test PK` и `dbx`. Фабричные дефолты внутри прошивки тоже обновлены и переживают сброс CMOS.
+* Проверить наличие ключей **2023** после загрузки можно в PowerShell **от администратора** (везде должно быть `True`):
+  ```powershell
+  Confirm-SecureBootUEFI
+  [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name KEK).Bytes) -match 'KEK 2K CA 2023'
+  [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Bytes) -match 'Windows UEFI CA 2023'
+  [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Bytes) -match 'Microsoft UEFI CA 2023'
+  [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Bytes) -match 'Option ROM UEFI CA 2023'
+  ```
 
 ---
 
@@ -188,11 +196,11 @@ Get-FileHash .\03_UV_50_50_Balanced\2_UEFI_SB\*.bin -Algorithm SHA256
 
 ## English summary
 
-* **Download everything at once:** [Releases](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v1.0.zip`, or grab individual files from the folders.
+* **Download everything at once:** [Releases](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v1.1.zip`, or grab individual files from the folders.
 * **For HUANANZHI X99-TF (`GHX99014` / `GHX99015`) only.** Do not flash onto any other X99 board — high risk of a brick that needs a CH341A programmer to recover.
 * Base: `GHX99015` (05/25/2020), extended mod based on [Koshak1013/HuananzhiX99_BIOS_mods](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`Huananzhi X99-TF / 2020-05-25`, `kot_v011`). Xeon E5 v3: `306F2` microcode removed + `ser8989_S3TurboHack` all-core turbo unlock with undervolt; E5 v4 microcode `406F1` rev `0xB000040` kept.
 * **Power limits unlocked** (`PL1 200 W`, `PL2 250 W`, `Tau 56 s`, `IccMax 160 A`) — keep the VRM cooled. Lower PL1/PL2 in `IntelRCSetup → Advanced Power Management Configuration → SOCKET RAPL Config`. On 14–18-core Xeons you can also cap `Cores Enabled` (e.g. `12` on an 18-core CPU for cooler VRM and steadier gaming boost, trading away full multi-thread render throughput). **Do not set `Power Technology` to `Custom`.**
-* Folders: `<undervolt tier>/<mode>/`. Tiers: `0/0`, `−40/−30`, `−50/−50` (recommended), `−70/−50` mV. Modes: `1_Legacy` (CSM), `2_UEFI_SB` (UEFI + ReBAR + Secure Boot), `3_UEFI_SB_TPM` (+ TPM 2.0). Secure Boot and TPM are not in the BIOS menu — choose the mode at flash time.
+* Folders: `<undervolt tier>/<mode>/`. Tiers: `0/0`, `−40/−30`, `−50/−50` (recommended), `−70/−50` mV. Modes: `1_Legacy` (CSM), `2_UEFI_SB` (UEFI + ReBAR + Secure Boot), `3_UEFI_SB_TPM` (+ TPM 2.0). UEFI builds include both **2011 and 2023 Microsoft Secure Boot certificates** (`KEK 2K CA 2023`, `Windows UEFI CA 2023`, `Microsoft UEFI CA 2023`, `Microsoft Option ROM UEFI CA 2023`) pre-enrolled in NVRAM and factory defaults (`KEKDefault`/`dbDefault`). Secure Boot and TPM are not in the BIOS menu — choose the mode at flash time.
 * Flash with `flash.bat` (as admin): it backs up first (full 16 MB if allowed, otherwise the 8 MB BIOS region), waits for you to copy the backup, then writes **only the 8 MB BIOS region** and verifies it. `*_16MB_CH341A.bin` files are for an external programmer only.
 * **v3 unlock:** rename `C:\Windows\System32\mcupdate_GenuineIntel.dll` so Windows does not reload the `306F2` microcode (verify all-core boost under load in HWiNFO64/CPU-Z).
 * **MBR → GPT / ReBAR / TPM checks:** find your OS disk `N` via `Get-Partition -DriveLetter C | Get-Disk` before running `mbr2gpt /validate /disk:N /allowFullOS` and `/convert`. Verify ReBAR in GPU-Z (`Resizable BAR: Enabled`). TPM-LPC-X2 10-pin (Infineon SLB9665) works on `JLPC1` / `DEBUG1` (seat only when unplugged, verify key pin / Pin 1; check via `tpm.msc` or admin PowerShell `Get-Tpm` & `Confirm-SecureBootUEFI`).
