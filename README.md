@@ -72,19 +72,44 @@
 
 ## После прошивки
 
-**Анлок на v3: отключите загрузку микрокода в Windows.** Иначе Windows сама загрузит микрокод `306F2` и анлок пропадёт. В командной строке от администратора:
+**Анлок на v3: отключите загрузку микрокода в Windows.** Иначе Windows сама загрузит микрокод `306F2` и анлок пропадёт. Выберите удобный вариант (запуск от администратора):
+
+Командная строка (`cmd` от администратора):
 ```bat
 takeown /f C:\Windows\System32\mcupdate_GenuineIntel.dll
 icacls C:\Windows\System32\mcupdate_GenuineIntel.dll /grant *S-1-5-32-544:F
 ren C:\Windows\System32\mcupdate_GenuineIntel.dll mcupdate_GenuineIntel.dll.bak
 ```
-Перезагрузитесь. Крупные обновления Windows могут вернуть файл — тогда повторите. В Linux не загружайте `intel-ucode` (или используйте параметр ядра `dis_ucode_ldr`). Учтите: без свежего микрокода часть защит от уязвимостей CPU (Spectre и др.) неактивна.
 
-**Windows на MBR, а нужен UEFI-режим.** С `2_UEFI_SB`/`3_UEFI_SB_TPM` плата не загрузит MBR-диск. Сначала конвертируйте диск: `mbr2gpt /validate /disk:N /allowFullOS`, затем `mbr2gpt /convert /disk:N /allowFullOS` — или начните с `1_Legacy`.
+PowerShell (ПКМ по «Пуск» → *Windows PowerShell (администратор)* / *Терминал (администратор)*):
+```powershell
+takeown /f "C:\Windows\System32\mcupdate_GenuineIntel.dll"
+icacls "C:\Windows\System32\mcupdate_GenuineIntel.dll" /grant "*S-1-5-32-544:F"
+Rename-Item "C:\Windows\System32\mcupdate_GenuineIntel.dll" "mcupdate_GenuineIntel.dll.bak"
+```
 
-**Загрузочная флешка не стартует при Secure Boot.** В прошивке стандартные ключи (AMI Test PK, Microsoft KEK/UEFI CA 2011, Windows Production PCA 2011). Windows грузится сразу; для Ventoy, Sergei Strelec и т.п. при ошибке `Security Violation` выберите `.efi`-файл на флешке через MokManager (Enroll Hash) или используйте `1_Legacy`.
+Перезагрузитесь. Крупные обновления Windows могут вернуть файл — тогда повторите. В Linux не загружайте `intel-ucode` (или добавьте параметр ядра `dis_ucode_ldr`). Учтите: без свежего микрокода часть защит от уязвимостей CPU (Spectre и др.) неактивна.
+* **Как проверить анлок:** откройте **HWiNFO64** или **CPU-Z** (вкладка *Bench → Stress CPU*) — под нагрузкой на все ядра частота должна подниматься выше паспортного all-core Turbo Boost (до максимума для 1 ядра или упора в лимит мощности).
 
-**ReBAR.** На видеокартах без поддержки Resizable BAR (GTX 10/16, RTX 20) драйвер `ReBarDxe` просто пропускает карту. Если прошили `1_Legacy`, а потом перешли на GPT/UEFI: в BIOS `CSM Support = Disabled`, `Above 4G Decoding = Enabled`, затем запустите **`Enable_ReBAR_Windows.bat`** от администратора.
+**Windows на MBR, а нужен UEFI-режим.** С `2_UEFI_SB`/`3_UEFI_SB_TPM` плата не загрузит MBR-диск. Сначала узнайте номер системного диска `N` и стиль разделов (`MBR` или `GPT`):
+
+PowerShell (покажет только системный диск с `C:` — цифра в колонке **`Number`** и есть ваш `N`, а **`PartitionStyle`** покажет, нужен ли переход с `MBR`):
+```powershell
+Get-Partition -DriveLetter C | Get-Disk
+```
+Или через окно Windows (`Win + R` → `diskmgmt.msc`): найдите строку с диском `(C:)`, цифра слева («Диск 0» / «Диск 1») — это `N` (*ПКМ по «Диск N» → Свойства → Тома → Стиль разделов*).
+
+Сохраните важные файлы и запустите конвертацию в `cmd` или PowerShell **от администратора** (подставьте ваш номер вместо `0`, сначала проверка без записи, затем сама конвертация):
+```bat
+mbr2gpt /validate /disk:0 /allowFullOS
+mbr2gpt /convert /disk:0 /allowFullOS
+```
+Если не хочется конвертировать — прошейте `1_Legacy`.
+
+**ReBAR.** На видеокартах без поддержки Resizable BAR (GTX 10/16, RTX 20) драйвер `ReBarDxe` просто пропускает карту. Если прошили `1_Legacy`, а потом перешли на GPT/UEFI: в BIOS поставьте `CSM Support = Disabled`, `Above 4G Decoding = Enabled`, затем запустите **`Enable_ReBAR_Windows.bat`** от администратора.
+* **Как проверить ReBAR:** откройте **GPU-Z** → строка **`Resizable BAR`** на главной вкладке должна показывать **`Enabled`** (по клику на `Enabled` откроются детали по BIOS и диапазонам BAR). На NVIDIA также видно в *Панели управления NVIDIA → Справка → Информация о системе → Изменяемый размер BAR: Да*.
+
+**Ключи Secure Boot.** В прошивке вшиты стандартные ключи (AMI Test PK, Microsoft KEK/UEFI CA 2011, Windows Production PCA 2011) — сама Windows грузится сразу.
 
 ---
 
@@ -110,6 +135,9 @@ ren C:\Windows\System32\mcupdate_GenuineIntel.dll mcupdate_GenuineIntel.dll.bak
 Ещё про память и питание:
 * Предзаполненные тайминги `12-12-12-28-12-200` проверены на DDR4 **Atermiter (чипы Micron)**. На другой памяти поправьте их **до** сохранения (`F10`), иначе может понадобиться сброс CMOS.
 * `Turbo Pwr Limit Lock = Disable`, поэтому PL1/PL2 можно менять и из Windows, например через ThrottleStop (вкладка TPL).
+* На 14–18-ядерных Xeon в пункте **`Cores Enabled`** (путь в таблице выше) можно протестировать частоты и при желании урезать число активных ядер — например, на 18-ядерном CPU выставить `12` (`24` потока, как сделал автор на своём E5-2696 v3):
+  * **Плюсы:** меньше потребление и нагрев CPU/VRM, выше и стабильнее частота Turbo Boost на оставшихся ядрах в играх и смешанной нагрузке.
+  * **Минусы:** пропорционально ниже производительность в задачах, нагружающих все 100% потоков (рендер, кодирование видео, тяжёлая компиляция).
 * Андервольт сам по себе снижает ток и нагрев VRM без потери частот.
 
 **Нет в меню** (меняется только выбором сборки или из Windows): андервольт, Secure Boot, TPM, ReBAR (`Enable_ReBAR_Windows.bat`), `IccMax`, управление вентилятором `CFAN1`.
@@ -123,9 +151,29 @@ ren C:\Windows\System32\mcupdate_GenuineIntel.dll mcupdate_GenuineIntel.dll.bak
 * **Ставьте и перетыкайте модуль только на обесточенном ПК** (выключить, тумблер БП в `0`, зажать кнопку питания на пару секунд). Ставить можно до или после прошивки.
 * **Сверьте ключ (пустой контакт) и Pin 1** на плате и на модуле. У сторонних модулей ключ часто не совпадает — не вставляйте силой, при необходимости перепиновайте колодку.
 * **Проверка в Windows:**
-  * `tpm.msc` → «Доверенный платформенный модуль готов к использованию», версия спецификации 2.0, производитель IFX;
-  * PowerShell от администратора: `Get-Tpm` (`TpmPresent`, `TpmReady` = `True`) и `Confirm-SecureBootUEFI` (`True`);
-  * если модуля нет — обесточьте ПК, проверьте посадку и распиновку и убедитесь, что прошита именно `3_UEFI_SB_TPM`.
+  * **Оснастки Windows:** `Win + R` → `tpm.msc` (в окне «Управление TPM» должно быть «Модуль TPM готов к использованию», версия `2.0`, производитель `IFX`); для Secure Boot — `Win + R` → `msinfo32` (строка «Состояние безопасной загрузки: Вкл.»).
+  * **PowerShell от администратора** (ПКМ по «Пуск» → *Windows PowerShell (администратор)*) — `Get-Tpm` проверит готовность TPM (все 4 поля = `True`), `Confirm-SecureBootUEFI` проверит Secure Boot (`True` для `2_UEFI_SB` и `3_UEFI_SB_TPM`):
+    ```powershell
+    Get-Tpm | Select-Object TpmPresent, TpmReady, TpmEnabled, TpmActivated
+    Confirm-SecureBootUEFI
+    ```
+  * **Командная строка (`cmd` от администратора)** (если в вашей Windows есть `wmic`; ожидается `SpecVersion = 2.0...` и оба флага `TRUE`):
+    ```bat
+    wmic /namespace:\\root\cimv2\security\microsofttpm path win32_tpm get SpecVersion, IsEnabled_InitialValue, IsActivated_InitialValue
+    ```
+  * Если модуля не видно — обесточьте ПК, проверьте посадку/распиновку и убедитесь, что прошита именно `3_UEFI_SB_TPM`.
+
+---
+
+## Если что-то пошло не так
+
+| Проблема | Причина | Решение |
+| :--- | :--- | :--- |
+| После `2_UEFI_SB`/`3_UEFI_SB_TPM` BIOS не видит загрузочный диск | Windows стоит на MBR-диске | Зайдите в `Advanced → CSM Configuration → CSM Support = Enabled`, сохраните (`F10`), загрузите Windows, сделайте `mbr2gpt` и выключите `CSM` обратно |
+| Чёрный экран после ручных таймингов ОЗУ в `MANUAL` | Переразгон памяти | Полностью обесточьте ПК и сбросьте CMOS перемычкой `JCMOS` (или снимите батарейку на 1–2 мин) — настройки прошивки сохранятся, ОЗУ вернётся в `Auto` |
+| Синие экраны или зависания на Xeon E5 v3 | Нехватка напряжения при андервольте | Прошейте тир на шаг мягче: `04` → `03` → `02` → `01_UV_0_0_Stock` |
+| Чёрный экран на старой видеокарте в UEFI-режиме | Видеокарта без UEFI GOP | Перейдите на `1_Legacy` (или на другой карте временно включите `CSM Support`) |
+| Загрузочная флешка (Ventoy, Strelec) выдаёт `Security Violation` | Сторонний `.efi` не подписан ключами MS/AMI | В MokManager выберите `Enroll hash from disk` и укажите `.efi`-файл с флешки, либо используйте `1_Legacy` |
 
 ---
 
@@ -143,11 +191,12 @@ Get-FileHash .\03_UV_50_50_Balanced\2_UEFI_SB\*.bin -Algorithm SHA256
 * **Download everything at once:** [Releases](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v1.0.zip`, or grab individual files from the folders.
 * **For HUANANZHI X99-TF (`GHX99014` / `GHX99015`) only.** Do not flash onto any other X99 board — high risk of a brick that needs a CH341A programmer to recover.
 * Base: `GHX99015` (05/25/2020, Koshak1013 / `kot_v011`). Xeon E5 v3: `306F2` microcode removed + `ser8989_S3TurboHack` all-core turbo unlock with undervolt; E5 v4 microcode `406F1` rev `0xB000040` kept.
-* **Power limits unlocked** (`PL1 200 W`, `PL2 250 W`, `Tau 56 s`, `IccMax 160 A`) — keep the VRM cooled. Lower PL1/PL2 in `IntelRCSetup → Advanced Power Management Configuration → SOCKET RAPL Config`. **Do not set `Power Technology` to `Custom`.**
+* **Power limits unlocked** (`PL1 200 W`, `PL2 250 W`, `Tau 56 s`, `IccMax 160 A`) — keep the VRM cooled. Lower PL1/PL2 in `IntelRCSetup → Advanced Power Management Configuration → SOCKET RAPL Config`. On 14–18-core Xeons you can also cap `Cores Enabled` (e.g. `12` on an 18-core CPU for cooler VRM and steadier gaming boost, trading away full multi-thread render throughput). **Do not set `Power Technology` to `Custom`.**
 * Folders: `<undervolt tier>/<mode>/`. Tiers: `0/0`, `−40/−30`, `−50/−50` (recommended), `−70/−50` mV. Modes: `1_Legacy` (CSM), `2_UEFI_SB` (UEFI + ReBAR + Secure Boot), `3_UEFI_SB_TPM` (+ TPM 2.0). Secure Boot and TPM are not in the BIOS menu — choose the mode at flash time.
 * Flash with `flash.bat` (as admin): it backs up first (full 16 MB if allowed, otherwise the 8 MB BIOS region), waits for you to copy the backup, then writes **only the 8 MB BIOS region** and verifies it. `*_16MB_CH341A.bin` files are for an external programmer only.
-* **v3 unlock:** rename `C:\Windows\System32\mcupdate_GenuineIntel.dll` so Windows does not reload the `306F2` microcode.
-* TPM: TPM-LPC-X2 10-pin (Infineon SLB9665) works on header `JLPC1` / `DEBUG1`. Install only with the PC unplugged and check the key pin / Pin 1 orientation.
+* **v3 unlock:** rename `C:\Windows\System32\mcupdate_GenuineIntel.dll` so Windows does not reload the `306F2` microcode (verify all-core boost under load in HWiNFO64/CPU-Z).
+* **MBR → GPT / ReBAR / TPM checks:** find your OS disk `N` via `Get-Partition -DriveLetter C | Get-Disk` before running `mbr2gpt /validate /disk:N /allowFullOS` and `/convert`. Verify ReBAR in GPU-Z (`Resizable BAR: Enabled`). TPM-LPC-X2 10-pin (Infineon SLB9665) works on `JLPC1` / `DEBUG1` (seat only when unplugged, verify key pin / Pin 1; check via `tpm.msc` or admin PowerShell `Get-Tpm` & `Confirm-SecureBootUEFI`).
+* **Troubleshooting:** if UEFI builds show no boot drive, your OS is MBR (temporarily enable `CSM Support`, run `mbr2gpt`, then disable CSM). Clear CMOS (`JCMOS`) if manual RAM timings fail to POST.
 * DDR4 tops out at 2133 MHz on this platform; preset manual timings `12-12-12-28-12-200` (tested on Atermiter DDR4 with Micron chips) are disabled by default.
 
 ---
