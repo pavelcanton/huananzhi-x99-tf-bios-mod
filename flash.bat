@@ -4,7 +4,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 echo ============================================================================
-echo   HUANANZHI X99-TF (GHX99015) - Universal Modded BIOS Flasher (Intel FPT)
+echo   HUANANZHI X99-TF (GHX99015) - Modded BIOS v2.0 Flasher (Intel FPT)
 echo ============================================================================
 echo.
 
@@ -23,55 +23,45 @@ if not exist "tools\fptw64.exe" (
     exit /b 1
 )
 
-echo Выберите тир андервольта CPU ^(Xeon E5 v3; для v4 андервольт игнорируется^):
-echo   [1]  0 /  0 mV   - Stock Voltage ^(чистый Turbo Boost Unlock, без андервольта^)
-echo   [2] -40 / -30 mV - Mild          ^(сверхмягкий, для слабых/неудачных кристаллов^)
-echo   [3] -50 / -50 mV - Balanced      ^(универсальный, рекомендуется для большинства v3^)
-echo   [4] -70 / -50 mV - Performance   ^(для удачных кристаллов; ниже нагрев, выше буст^)
+echo Выберите стартовый профиль ^(в v2.0 андервольт, Ring, ядра, ОЗУ и лимиты
+echo можно в любой момент менять прямо в меню BIOS с сохранением по F10^):
 echo.
-set /p "TCHOICE=Введите номер тира [1-4]: "
+echo   [1] Safe Stock      - 0/0 mV, динамический Ring, C-States ON, IMC Auto
+echo                         ^(максимальная стабильность; лучший выбор для Xeon v4^)
+echo   [2] Performance OC  - -50/-40 mV, лок Ring на макс., C-States OFF, тюнинг IMC
+echo                         ^(РЕКОМЕНДУЕТСЯ для Xeon E5 v3; ОЗУ и tREFI в Auto;
+echo                          сброс CMOS всегда откатывает профиль в Safe Stock!^)
+echo.
+set /p "PCHOICE=Введите номер профиля [1-2]: "
 
-if "%TCHOICE%"=="1" goto :tier1
-if "%TCHOICE%"=="2" goto :tier2
-if "%TCHOICE%"=="3" goto :tier3
-if "%TCHOICE%"=="4" goto :tier4
-echo [ERROR] Неверный выбор тира.
+if "%PCHOICE%"=="1" goto :prof1
+if "%PCHOICE%"=="2" goto :prof2
+echo [ERROR] Неверный выбор профиля.
 pause
 exit /b 1
 
-:tier1
-set "TDIR=01_UV_0_0_Stock"
-set "TTAG=UV0_0"
-set "TDESC=0 / 0 mV (Stock Voltage)"
+:prof1
+set "PDIR=01_Safe_Stock"
+set "PTAG=SafeStock"
+set "PDESC=Safe Stock (0/0 mV, Dynamic Ring, C-States ON, IMC/RAM Auto, All Cores)"
 goto :pick_mode
 
-:tier2
-set "TDIR=02_UV_40_30_Mild"
-set "TTAG=UV40_30"
-set "TDESC=-40 mV Core / -30 mV Cache"
-goto :pick_mode
-
-:tier3
-set "TDIR=03_UV_50_50_Balanced"
-set "TTAG=UV50_50"
-set "TDESC=-50 mV Core / -50 mV Cache"
-goto :pick_mode
-
-:tier4
-set "TDIR=04_UV_70_50_Perf"
-set "TTAG=UV70_50"
-set "TDESC=-70 mV Core / -50 mV Cache"
+:prof2
+set "PDIR=02_Performance_OC"
+set "PTAG=PerfOC"
+set "PDESC=Performance OC (-50/-40 mV, Ring Lock, C-States OFF, Safe IMC Tweaks, RAM Auto, All Cores)"
 goto :pick_mode
 
 :pick_mode
 echo.
-echo Выберите режим работы ^(память во всех вариантах в Auto, SmartFan V3 включен^):
-echo   [1] Legacy CSM       ^(TPM=OFF, SecureBoot=OFF, CSM=ON,  Above4G=OFF, ReBAR=0^)
-echo   [2] UEFI + SecureBoot^(TPM=OFF, SecureBoot=ON,  CSM=OFF, Above4G=ON,  ReBAR=0x20^)
-echo   [3] Full UEFI+SB+TPM ^(TPM=ON,  SecureBoot=ON,  CSM=OFF, Above4G=ON,  ReBAR=0x20^)
+echo Выберите режим загрузки ^(память в Auto, SmartFan V3 + S3 Fix включен^):
+echo   [1] Legacy CSM          ^(TPM=OFF, SecureBoot=OFF, CSM=ON,  Above4G=OFF, ReBAR=0^)
+echo   [2] UEFI + Secure Boot  ^(TPM=OFF, SecureBoot=ON,  CSM=OFF, Above4G=ON,  ReBAR=0x20^)
+echo   [3] Full UEFI+SB+TPM2.0 ^(TPM=ON,  SecureBoot=ON,  CSM=OFF, Above4G=ON,  ReBAR=0x20^)
 echo.
-echo ВНИМАНИЕ: В меню BIOS платы GHX99015 пункты Secure Boot и TPM скрыты,
-echo           поэтому выбрать нужный режим нужно именно здесь перед прошивкой!
+echo ВНИМАНИЕ: Пункты Secure Boot и TPM в меню BIOS скрыты - выбирайте нужный
+echo           режим здесь. В UEFI-сборках вшиты ключи MS 2011+2023, dbx (443)
+echo           и чистый Community PK ^(уязвимость PKfail устранена^).
 echo.
 set /p "MCHOICE=Введите номер режима [1-3]: "
 
@@ -89,16 +79,16 @@ goto :check_file
 
 :mode2
 set "MTAG=2_UEFI_SB"
-set "MDESC=Pure UEFI + ReBAR (0x20) + Secure Boot ON + TPM OFF"
+set "MDESC=Pure UEFI + ReBAR (0x20) + Secure Boot ON (2011+2023, no PKfail) + TPM OFF"
 goto :check_file
 
 :mode3
 set "MTAG=3_UEFI_SB_TPM"
-set "MDESC=Pure UEFI + ReBAR (0x20) + Secure Boot ON + TPM 2.0 ON"
+set "MDESC=Pure UEFI + ReBAR (0x20) + Secure Boot ON (2011+2023, no PKfail) + TPM 2.0 ON"
 goto :check_file
 
 :check_file
-set "BIN_PATH=%TDIR%\%MTAG%\X99TF_GHX99015_%TTAG%_%MTAG%_8MB_FPT.bin"
+set "BIN_PATH=%PDIR%\%MTAG%\X99TF_GHX99015_%PTAG%_%MTAG%_8MB_FPT.bin"
 if not exist "%BIN_PATH%" (
     echo [ERROR] Файл не найден: "%BIN_PATH%"
     pause
@@ -180,7 +170,7 @@ echo.
 echo ============================================================================
 echo   ПЕРЕД ПРОШИВКОЙ ПРОВЕРЬТЕ И ПЕРЕНЕСИТЕ БЭКАП!
 echo     Файл прошивки : %BIN_PATH%
-echo     Андервольт    : %TDESC%
+echo     Профиль       : %PDESC%
 echo     Режим         : %MDESC%
 echo     Ваш бэкап     : %BACKUP_FILE%
 echo ============================================================================
@@ -226,6 +216,8 @@ echo ===========================================================================
 echo   ГОТОВО! Прошивка и верификация прошли на 100%%!
 echo   Бэкап сохранён: "%BACKUP_FILE%"
 echo   Перезагрузите ПК. Первый запуск и тренировка RAM займут ~15-30 сек.
+echo   Подсказка: если меняете андервольт/тайминги в BIOS и нет старта -
+echo   сброс CMOS ^(JCMOS^) всегда безопасно вернёт профиль Safe Stock.
 echo ============================================================================
 pause
 exit /b 0
