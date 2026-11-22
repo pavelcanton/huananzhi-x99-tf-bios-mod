@@ -4,7 +4,7 @@ setlocal EnableExtensions
 cd /d "%~dp0"
 
 echo ============================================================================
-echo   HUANANZHI X99-TF (GHX99015) - Modded BIOS v2.0 Flasher (Intel FPT)
+echo   HUANANZHI X99-TF (GHX99015) - Modded BIOS v2.1 Flasher (Intel FPT)
 echo ============================================================================
 echo.
 
@@ -23,7 +23,7 @@ if not exist "tools\fptw64.exe" (
     exit /b 1
 )
 
-echo Выберите стартовый профиль ^(в v2.0 андервольт, Ring, ядра, ОЗУ и лимиты
+echo Выберите стартовый профиль ^(в v2.1 андервольт, Ring, ядра, ОЗУ и лимиты
 echo можно в любой момент менять прямо в меню BIOS с сохранением по F10^):
 echo.
 echo   [1] Safe Stock      - 0/0 mV, динамический Ring, C-States ON, IMC Auto

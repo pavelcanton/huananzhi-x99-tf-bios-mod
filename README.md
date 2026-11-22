@@ -1,13 +1,13 @@
-# Huananzhi X99-TF — модифицированный BIOS v2.0 (GHX99015, 25.05.2020)
+# Huananzhi X99-TF — модифицированный BIOS v2.1 (GHX99015, 25.05.2020)
 
-Пакет готовых прошивок **v2.0** для **HUANANZHI X99-TF** на базе сборки [Koshak1013](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`GHX99015`, 25.05.2020): анлок Turbo Boost для Xeon E5 v3, **живой андервольт и лок Ring/Uncore прямо в меню BIOS с реальным сохранением по `F10`**, 25 разблокированных подменю, расшитые лимиты питания, ReBAR, чистый Secure Boot **2011 + 2023 без уязвимости `PKfail` + 443 отзыва `dbx`**, TPM 2.0 и исправленный SmartFan V3 (с поддержкой S3-сна).
+Пакет готовых прошивок **v2.1** для **HUANANZHI X99-TF** на базе сборки [Koshak1013](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`GHX99015`, 25.05.2020): анлок Turbo Boost для Xeon E5 v3, **живой андервольт и лок Ring/Uncore прямо в меню BIOS с реальным сохранением по `F10`**, 25 разблокированных подменю, расшитые лимиты питания, ReBAR, чистый Secure Boot **2011 + 2023 без уязвимости `PKfail` + 443 отзыва `dbx`**, TPM 2.0, работающий `Intel VT-x` и исправленный SmartFan V3 (с поддержкой S3-сна).
 
 Вместо 4 жёстких тиров андервольта из v1.1 теперь достаточно **2 профилей × 3 режима = 6 сборок** — все параметры разгона и тайминги ОЗУ можно настраивать в моменте в BIOS Setup, а сброс CMOS гарантированно возвращает безопасный `Safe Stock`.
 
 *English summary is at the bottom.*
 
 > [!TIP]
-> **Скачать всё одним архивом:** [страница Releases](../../releases/latest) → файл `X99TF_GHX99015_BIOS_Pack_v2.0.zip`. Или берите отдельные файлы прямо из папок ниже.
+> **Скачать всё одним архивом:** [страница Releases](../../releases/latest) → файл `X99TF_GHX99015_BIOS_Pack_v2.1.zip`. Или берите отдельные файлы прямо из папок ниже.
 
 > [!CAUTION]
 > **Только для HUANANZHI X99-TF (`GHX99014` / `GHX99015`).** Не шейте на другие платы X99 (Machinist, Kllisre, Qiyida, Jingsha, другие модели Huananzhi и т.д.): у них другие Flash Descriptor, разводка памяти, Super I/O, GPIO и линии PCIe — высокий риск «кирпича» с восстановлением только программатором.
@@ -16,7 +16,13 @@
 
 ---
 
-## Что нового в v2.0
+## Что нового в v2.0 / v2.1
+
+> [!IMPORTANT]
+> **Исправления v2.1 (обязательно к обновлению с v2.0):**
+> * Исправлен `GUID_STD_DEFAULTS` (`4599D26F-...`) в таблице NVRAM: в `v2.0` при первом старте `02_Performance_OC` срабатывал Bank Swap со сбросом 23 настроек в `01_Safe_Stock` — теперь **`02_Performance_OC` (`−50/−40 mV`, лок Ring, C-States OFF, IMC) гарантированно применяется с первого холодного старта**!
+> * Возвращён `MSR Lock Control = Enable` (`0x0075 = 1`): исправлен **аппаратный `Intel VT-x`** (в `v2.0` виртуализация отключалась в Диспетчере задач) и восстановлен `MSR 0xE2` CFG Lock.
+> * В `flash.bat` используются короткие относительные пути — устранён `Error 200` Intel FPT на длинных путях (>127 символов) и папках с кириллицей/пробелами.
 
 | Область | Что сделано и проверено на живом железе |
 | :--- | :--- |
@@ -165,7 +171,8 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 > * **`Energy Efficient Turbo = Enable`** и **`Energy Performance BIAS = 7`** — оптимальны для стабильного буста без залипаний частоты на 1200 МГц.
 > * **`Fast Boot = Disabled`** — гарантирует корректную инициализацию USB/PCIe/ReBAR.
 > * **`Current Config` (`Program PP0_CURT_CFG_CTRL_MSR`)** — оставьте `0` (не занижайте заводской лимит тока CPU).
-> * **`Power Technology`** — в v1.1 его нельзя было менять на `Custom`; **в v2.0 этот баг полностью исправлен**, режим `Custom` стоит по умолчанию и работает стабильно.
+> * **`MSR Lock Control`** (`Processor Configuration`) — оставьте **`Enable`** (`1`), иначе отключится аппаратная виртуализация `Intel VT-x` (`MSR 0x3A`).
+> * **`Power Technology`** — в v1.1 его нельзя было менять на `Custom`; **в v2.0+ этот баг полностью исправлен**, режим `Custom` стоит по умолчанию и работает стабильно.
 
 ### Реальный ориентир производительности (живой тест v2.0 / V4.4)
 Конфигурация стенда: **Xeon E5-2696 v3 (`12C/24T`, `−65 / −45 мВ`, Ring `3000 МГц` lock)** + **4×8 ГБ ECC DDR4-2133 (`12-12-12-28-200-1T`, `tREFI=32760`)** + **RTX 5070 Ti (ReBAR 16 ГБ)**:
@@ -209,16 +216,20 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
   Get-FileHash .\02_Performance_OC\3_UEFI_SB_TPM\*.bin -Algorithm SHA256
   ```
 * Отпечаток публичного сертификата **`HUANANZHI X99-TF Community Platform Key`** (`PK`, `2026–2056`):
-  * SHA-256 (DER): `b468df29eb43658bdd4562d1ee306cca9b8f08bd27d9981f3a4d74ff4f1ad730`
+  * SHA-256 (DER): `6b61f6bcc8a80e71098442fab01c1ec598ccc45393ab64eb0a7637363f7b8522`
   * Приватный ключ сгенерирован одноразово при сборке релиза и **безвозвратно перезаписан нулями и удалён** сразу после подписи `PKDefault` — он не хранится ни в репозитории, ни у автора (полная защита от `PKfail`).
 
 ---
 
 ## English summary
 
-* **Download all builds as one archive:** [Releases](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v2.0.zip`, or grab individual files from the folders.
+* **Download all builds as one archive:** [Releases](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v2.1.zip`, or grab individual files from the folders.
 * **For HUANANZHI X99-TF (`GHX99014` / `GHX99015`) only.** Do not flash onto any other X99 motherboard.
-* **What's new in v2.0 (live-verified on hardware):**
+* **What's new in v2.1 (over v2.0):**
+  * **Fixed `StdDefaults` NVRAM GUID (`4599D26F-...`)**: prevents the first-boot NVRAM Bank Swap that silently reset `02_Performance_OC` back to `01_Safe_Stock` in `v2.0`; all 23 `PerfOC` settings (`−50/−40 mV`, Ring lock, C-States OFF, IMC tweaks) now apply on cold boot #1.
+  * **Fixed Intel VT-x (`MSR Lock Control = Enable`)**: locks `IA32_FEATURE_CONTROL` (`MSR 0x3A[0]`) and `MSR 0xE2[15]` so hardware virtualization works out of the box.
+  * **Fixed `flash.bat` long/non-ASCII paths**: uses short relative paths for Intel FPT (eliminates `Error 200` on paths >127 chars or with spaces/Cyrillic).
+* **Core v2.x features (live-verified on hardware):**
   * **Real `F10` NVRAM persistence fixed (`NvramDxe`/`NvramSmm` `0x70 → 0x72`):** BIOS settings no longer reset to defaults on every reboot!
   * **Live BIOS undervolt & Ring/Uncore lock (`NalexOverclock V4.2` DXE+PEI):** adjust Core/CLR/SA offsets and hardware `MSR 0x620` Ring lock (`CLR Max OC Ratio = 30` auto-clamps to each Xeon v3's safe max, `0` = dynamic; skipped on v4) directly in BIOS Setup with full S3 BootScript support — no more reflashing just to change undervolt tiers!
   * **`PKfail` (CVE-2024-8105) eliminated + March 2026 `dbx`:** compromised `AMI Test PK` completely purged from `PK`, `PKDefault`, and `dbtDefault`; replaced with a clean 2048-bit **`HUANANZHI X99-TF Community Platform Key`** (`2026–2056`, ephemeral private key shredded immediately after signing), Microsoft **2011 + 2023** `KEK`/`db` CAs, official March 2026 Microsoft **`dbx` (443 SHA-256 revocations)**, and clean native 43-byte AMI AuthVar ExtHeaders.
