@@ -115,14 +115,16 @@ if not "%FPT_ERR%"=="0" (
 )
 
 for /f %%T in ('powershell -NoProfile -Command "Get-Date -Format yyyyMMdd_HHmmss"') do set "TS=%%T"
-set "BACKUP_FULL=%~dp0backup_full_16MB_%TS%.bin"
-set "BACKUP_BIOS=%~dp0backup_bios_8MB_%TS%.bin"
+set "BACKUP_FULL_REL=backup_full_16MB_%TS%.bin"
+set "BACKUP_BIOS_REL=backup_bios_8MB_%TS%.bin"
+set "BACKUP_FULL=%~dp0%BACKUP_FULL_REL%"
+set "BACKUP_BIOS=%~dp0%BACKUP_BIOS_REL%"
 
 echo.
 echo [2/4] Снятие резервной копии текущего BIOS...
 echo       Пробую снять ПОЛНЫЙ 16 МБ дамп ^(FD + ME + BIOS^)...
 pushd "%~dp0tools"
-fptw64.exe -d "%BACKUP_FULL%"
+fptw64.exe -d "..\%BACKUP_FULL_REL%"
 set "FULL_ERR=%errorlevel%"
 popd
 
@@ -137,7 +139,7 @@ echo.
 echo [WARN] Полный 16 МБ дамп не разрешён платой ^(или размер не 16 МБ^).
 echo        Снимаю полный 8 МБ регион BIOS...
 pushd "%~dp0tools"
-fptw64.exe -bios -d "%BACKUP_BIOS%"
+fptw64.exe -bios -d "..\%BACKUP_BIOS_REL%"
 set "BAK_ERR=%errorlevel%"
 popd
 if not "%BAK_ERR%"=="0" (
@@ -188,7 +190,7 @@ if /I not "%CONFIRM%"=="YES" (
 echo.
 echo [3/4] Прошивка "%BIN_PATH%" ^(только 8 МБ BIOS-регион^)...
 pushd "%~dp0tools"
-fptw64.exe -bios -f "%~dp0%BIN_PATH%"
+fptw64.exe -bios -f "..\%BIN_PATH%"
 set "FL_ERR=%errorlevel%"
 popd
 if not "%FL_ERR%"=="0" (
@@ -201,7 +203,7 @@ if not "%FL_ERR%"=="0" (
 echo.
 echo [4/4] Контрольная верификация прошитого BIOS...
 pushd "%~dp0tools"
-fptw64.exe -bios -verify "%~dp0%BIN_PATH%"
+fptw64.exe -bios -verify "..\%BIN_PATH%"
 set "VF_ERR=%errorlevel%"
 popd
 if not "%VF_ERR%"=="0" (
