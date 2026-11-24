@@ -140,7 +140,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 
 ## Гайд по разгону и тюнингу в BIOS
 
-В **v2.0** все ключевые меню открыты, `Power Technology = Custom` уже безопасно активирован, а правки сохраняются по `F10`. Нажмите **`Del`** при старте (задержка `Timeout = 3 сек`).
+В **v2.1** все ключевые меню открыты, `Power Technology = Custom` уже безопасно активирован, а правки сохраняются по `F10`. Нажмите **`Del`** при старте (задержка `Timeout = 3 сек`).
 
 ### Карта основных параметров для повышения производительности
 
@@ -156,7 +156,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 | **Ускорение контроллера памяти (IMC)** | `IntelRCSetup → Memory Configuration` | `Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal → Memory Power Savings Mode = User Defined` → `CKE Throttling = Off`, `Opportunistic SR = Disabled`, `MDLL Off = Disabled`; `Memory RAS Configuration` → `Patrol/Demand Scrub = Disable` (всё это уже активно в `02_Performance_OC`). |
 | **PCIe / Above 4G** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` для UEFI/ReBAR), `PCIe Device Registers`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`. |
 | **Защита от перегрева (PROCHOT#)** | `IntelRCSetup → Advanced Power Management Configuration → CPU Thermal Management` | Держите `Bi-directional PROCHOT# = Enabled` (защита VRM). |
-| **Кривая вентилятора CPU** | `Advanced → Hardware Monitor` | Точки `T1–T5`, `PWM1–PWM4`. В v2.0 `T5` (`78°C`) корректно задаёт порог 100% оборотов и переживает сон S3. |
+| **Кривая вентилятора CPU** | `Advanced → Hardware Monitor` | Точки `T1–T5`, `PWM1–PWM4`. В v2.1 `T5` (`78°C`) корректно задаёт порог 100% оборотов и переживает сон S3. |
 
 > [!TIP]
 > **Пошаговый план тюнинга после прошивки `02_Performance_OC`:**
@@ -174,7 +174,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 > * **`MSR Lock Control`** (`Processor Configuration`) — оставьте **`Enable`** (`1`), иначе отключится аппаратная виртуализация `Intel VT-x` (`MSR 0x3A`).
 > * **`Power Technology`** — в v1.1 его нельзя было менять на `Custom`; **в v2.0+ этот баг полностью исправлен**, режим `Custom` стоит по умолчанию и работает стабильно.
 
-### Реальный ориентир производительности (живой тест v2.0 / V4.4)
+### Реальный ориентир производительности (живой тест v2.1 / V4.4)
 Конфигурация стенда: **Xeon E5-2696 v3 (`12C/24T`, `−65 / −45 мВ`, Ring `3000 МГц` lock)** + **4×8 ГБ ECC DDR4-2133 (`12-12-12-28-200-1T`, `tREFI=32760`)** + **RTX 5070 Ti (ReBAR 16 ГБ)**:
 * **AIDA64 Cache & Memory:** `Read 65 977 МБ/с` | `Write 47 503 МБ/с` | `Copy 57 373 МБ/с` | `Memory Latency 75.9 нс` | `L3 Latency 27.1 нс` | `North Bridge / Ring 3000.0 МГц` (без просадок).
 * **Снижение реальной задержки ОЗУ (256 МБ pointer-chase):** с `110.4 нс` (до тюнинга) до **`95.2 нс` (`−15.2 нс`)**.

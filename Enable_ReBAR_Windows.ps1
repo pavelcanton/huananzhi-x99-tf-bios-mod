@@ -6,21 +6,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-# Verify UEFI boot mode (EFI variables cannot be modified when booted in Legacy BIOS/CSM MBR mode)
-$fwType = (Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control" -Name "PEFirmwareType" -ErrorAction SilentlyContinue).PEFirmwareType
-if ($fwType -ne 2) {
-    Write-Host "[ERROR] Windows is currently booted in Legacy BIOS (CSM/MBR) mode (PEFirmwareType=$fwType)." -ForegroundColor Red
-    Write-Host "        To use ReBAR without reflashing:" -ForegroundColor Yellow
-    Write-Host "        1. Convert your OS drive to GPT (e.g. mbr2gpt) and boot in UEFI mode." -ForegroundColor Yellow
-    Write-Host "        2. In BIOS: Boot -> CSM Support = Disabled, Video = UEFI, Above 4G Decoding = Enabled." -ForegroundColor Yellow
-    Write-Host "        3. Run this script again from UEFI Windows." -ForegroundColor Yellow
-    exit 1
-}
-
 $code = @"
 using System;
 using System.Runtime.InteropServices;
 public class UefiVarReBar {
+    [DllImport("kernel32.dll", SetLastError=true)]
+    public static extern bool GetFirmwareType(out uint FirmwareType);
     [DllImport("advapi32.dll", SetLastError=true)]
     public static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
     [DllImport("advapi32.dll", SetLastError=true, CharSet=CharSet.Auto)]
@@ -46,6 +37,35 @@ public class UefiVarReBar {
 }
 "@
 Add-Type -TypeDefinition $code
+
+# Verify UEFI boot mode accurately on Windows 10/11 (kernel32!GetFirmwareType + $env:firmware_type + SecureBoot\State fallback)
+$fwMode = "Unknown"
+try {
+    [uint32]$fwNum = 0
+    if ([UefiVarReBar]::GetFirmwareType([ref]$fwNum)) {
+        if ($fwNum -eq 2) { $fwMode = "UEFI" }
+        elseif ($fwNum -eq 1) { $fwMode = "Legacy" }
+    }
+} catch {
+    # Fallback for older Windows builds without kernel32!GetFirmwareType
+}
+if ($fwMode -eq "Unknown" -and $env:firmware_type) {
+    if ($env:firmware_type -eq "UEFI") { $fwMode = "UEFI" }
+    elseif ($env:firmware_type -eq "Legacy") { $fwMode = "Legacy" }
+}
+if ($fwMode -eq "Unknown" -and (Test-Path -LiteralPath "HKLM:\SYSTEM\CurrentControlSet\Control\SecureBoot\State")) {
+    $fwMode = "UEFI"
+}
+
+if ($fwMode -ne "UEFI") {
+    Write-Host "[ERROR] Windows is currently booted in Legacy BIOS (CSM/MBR) mode (FirmwareType=$fwMode)." -ForegroundColor Red
+    Write-Host "        To use ReBAR without reflashing:" -ForegroundColor Yellow
+    Write-Host "        1. Convert your OS drive to GPT (e.g. mbr2gpt) and boot in UEFI mode." -ForegroundColor Yellow
+    Write-Host "        2. In BIOS: Boot -> CSM Support = Disabled, Video = UEFI, Above 4G Decoding = Enabled." -ForegroundColor Yellow
+    Write-Host "        3. Run this script again from UEFI Windows." -ForegroundColor Yellow
+    exit 1
+}
+
 [UefiVarReBar]::EnablePrivilege()
 
 $guid = "{a3c5b77a-c88f-4a93-bf1c-4a92a32c65ce}"
