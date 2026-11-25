@@ -1,15 +1,32 @@
 @echo off
-chcp 65001 >nul
+"%SystemRoot%\System32\chcp.com" 65001 >nul
 setlocal EnableExtensions
-cd /d "%~dp0"
+set "ERRORLEVEL="
 
-net session >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] Запустите Enable_ReBAR_Windows.bat от имени Администратора!
-    echo         Run Enable_ReBAR_Windows.bat as Administrator!
+pushd "%~dp0" >nul 2>&1
+set "DIR_ERR=%errorlevel%"
+if not "%DIR_ERR%"=="0" (
+    echo [ERROR] Не удалось перейти в каталог скрипта!
+    echo         Failed to switch to script directory!
     pause
     exit /b 1
 )
 
-powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Enable_ReBAR_Windows.ps1"
+"%SystemRoot%\System32\fltmc.exe" >nul 2>&1
+set "ADM_ERR=%errorlevel%"
+if not "%ADM_ERR%"=="0" (
+    echo [ERROR] Запустите Enable_ReBAR_Windows.bat от имени Администратора!
+    echo         Run Enable_ReBAR_Windows.bat as Administrator!
+    popd >nul 2>&1
+    pause
+    exit /b 1
+)
+
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File ".\Enable_ReBAR_Windows.ps1"
+set "PS_ERR=%errorlevel%"
+if not "%PS_ERR%"=="0" (
+    echo [ERROR] Enable_ReBAR_Windows.ps1 завершился с ошибкой %PS_ERR%.
+)
+popd >nul 2>&1
 pause
+exit /b %PS_ERR%

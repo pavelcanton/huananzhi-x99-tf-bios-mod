@@ -154,7 +154,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 | **Режим снупинга (L3 / IMC)** | `IntelRCSetup → QPI Configuration → QPI General Configuration` | `COD Enable = Disable`, **`Early Snoop = Enable`** (ускоряет доступ к памяти на многоядерных Xeon; в `02_Performance_OC` уже включено). |
 | **Частота, тайминги и `tREFI` ОЗУ** | `IntelRCSetup → Memory Configuration → Memory Frequency` и `Memory Timings & Voltage Override` | Потолок DDR4 на Xeon E5 v3 — **2133 МГц** (`2133` или `Auto`; на Xeon E5 v4 поддерживается до **2400 МГц**). Для ручной настройки поставьте `DIMM profile = MANUAL`: откроются первичные тайминги, `Command Timing` (`1N`/`2N`), `Memory Voltage` и **`Refresh Rate (tREFI)`**. Увеличение `tREFI` до **`32760`** (при хорошем обдуве модулей) заметно снижает задержку ОЗУ. Предзаполненные `12-12-12-28-12-200` проверены на чипах **Micron (Atermiter/Samsung ECC)** — на других планках (Hynix/китайский ноунейм) сначала ослабьте до `14-14-14-32-260` и проверяйте в TestMem5! |
 | **Ускорение контроллера памяти (IMC)** | `IntelRCSetup → Memory Configuration` | `Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal → Memory Power Savings Mode = User Defined` → `CKE Throttling = Off`, `Opportunistic SR = Disabled`, `MDLL Off = Disabled`; `Memory RAS Configuration` → `Patrol/Demand Scrub = Disable` (всё это уже активно в `02_Performance_OC`). |
-| **PCIe / Above 4G** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` для UEFI/ReBAR), `PCIe Device Registers`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`. |
+| **PCIe / Above 4G** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` для UEFI/ReBAR), `PCI Express Settings`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`. |
 | **Защита от перегрева (PROCHOT#)** | `IntelRCSetup → Advanced Power Management Configuration → CPU Thermal Management` | Держите `Bi-directional PROCHOT# = Enabled` (защита VRM). |
 | **Кривая вентилятора CPU** | `Advanced → Hardware Monitor` | Точки `T1–T5`, `PWM1–PWM4`. В v2.1 `T5` (`78°C`) корректно задаёт порог 100% оборотов и переживает сон S3. |
 
@@ -162,7 +162,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 > **Пошаговый план тюнинга после прошивки `02_Performance_OC`:**
 > 1. Загрузитесь и проверьте стабильность базовых `−50 / −40 мВ` + лока Ring (10–15 мин OCCT / игры).
 > 2. По желанию аккуратно подберите андервольт глубже (например `−60 / −45 мВ` или `−65 / −45 мВ`) — если поймали BSOD, ослабьте на `5–10 мВ`.
-> 3. Займитесь памятью: сначала выставьте `Memory Frequency = 2133` и `Refresh Rate (tREFI) = 32760`, затем при желании переключите `DIMM profile = MANUAL`, подберите тайминги (`12-12-12-28-200-1N` или `13/14-...`) и проверьте стабильность в **TestMem5 (Anta777)**.
+> 3. Займитесь памятью: сначала при желании задайте `Memory Frequency = 2133`, затем переключите `DIMM profile = MANUAL` — **сразу проверьте предзаполненные тайминги `12-12-12-28-200` (под чипы Micron) и на планках Hynix / обычной DDR4 ослабьте их (например `14-14-14-32-260`) ДО сохранения `F10`!** Уже внутри открывшегося режима `MANUAL` выставьте `Refresh Rate (tREFI) = 32760`, подберите тайминги (`12-12-12-28-200-1N` или `13/14-...`) и проверьте стабильность в **TestMem5 (Anta777)**.
 > 4. Если после правки таймингов/вольтажа ПК не стартует — **не паникуйте**: обесточьте ПК и замкните `JCMOS` на 10 секунд, BIOS чисто откатится на `01_Safe_Stock`!
 
 > [!WARNING]

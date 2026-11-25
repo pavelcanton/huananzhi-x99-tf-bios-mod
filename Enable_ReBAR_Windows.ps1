@@ -6,37 +6,102 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-$code = @"
+if (-not ('UefiVarReBar' -as [type])) {
+    $code = @"
 using System;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+
 public class UefiVarReBar {
+    private const string ReBarGuid = "{a3c5b77a-c88f-4a93-bf1c-4a92a32c65ce}";
+
     [DllImport("kernel32.dll", SetLastError=true)]
     public static extern bool GetFirmwareType(out uint FirmwareType);
+
+    [DllImport("kernel32.dll", SetLastError=true)]
+    public static extern bool CloseHandle(IntPtr hObject);
+
     [DllImport("advapi32.dll", SetLastError=true)]
     public static extern bool OpenProcessToken(IntPtr ProcessHandle, uint DesiredAccess, out IntPtr TokenHandle);
+
     [DllImport("advapi32.dll", SetLastError=true, CharSet=CharSet.Auto)]
     public static extern bool LookupPrivilegeValue(string lpSystemName, string lpName, out long lpLuid);
+
     [StructLayout(LayoutKind.Sequential, Pack=4)]
     public struct TOKEN_PRIVILEGES { public int PrivilegeCount; public long Luid; public int Attributes; }
+
     [DllImport("advapi32.dll", SetLastError=true)]
     public static extern bool AdjustTokenPrivileges(IntPtr TokenHandle, bool DisableAllPrivileges, ref TOKEN_PRIVILEGES NewState, int BufferLength, IntPtr PreviousState, IntPtr ReturnLength);
+
     [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
     public static extern bool SetFirmwareEnvironmentVariable(string lpName, string lpGuid, byte[] pValue, uint nSize);
+
     [DllImport("kernel32.dll", SetLastError=true, CharSet=CharSet.Unicode)]
     public static extern uint GetFirmwareEnvironmentVariable(string lpName, string lpGuid, byte[] pBuffer, uint nSize);
+
     public static void EnablePrivilege() {
         IntPtr hToken;
-        if (!OpenProcessToken(System.Diagnostics.Process.GetCurrentProcess().Handle, 0x28, out hToken))
-            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-        TOKEN_PRIVILEGES tp = new TOKEN_PRIVILEGES { PrivilegeCount = 1, Attributes = 2 };
-        if (!LookupPrivilegeValue(null, "SeSystemEnvironmentPrivilege", out tp.Luid))
-            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
-        if (!AdjustTokenPrivileges(hToken, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero))
-            throw new System.ComponentModel.Win32Exception(Marshal.GetLastWin32Error());
+        if (!OpenProcessToken(Process.GetCurrentProcess().Handle, 0x28, out hToken)) {
+            throw new Win32Exception(Marshal.GetLastWin32Error());
+        }
+        try {
+            TOKEN_PRIVILEGES tp = new TOKEN_PRIVILEGES { PrivilegeCount = 1, Attributes = 2 };
+            if (!LookupPrivilegeValue(null, "SeSystemEnvironmentPrivilege", out tp.Luid)) {
+                throw new Win32Exception(Marshal.GetLastWin32Error());
+            }
+            bool ok = AdjustTokenPrivileges(hToken, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
+            int err = Marshal.GetLastWin32Error();
+            if (!ok || err != 0) {
+                throw new Win32Exception(err != 0 ? err : 1300);
+            }
+        } finally {
+            CloseHandle(hToken);
+        }
+    }
+
+    public static uint ReadReBar(out byte val, out int lastErr) {
+        byte[] buf = new byte[4];
+        uint len = GetFirmwareEnvironmentVariable("ReBarState", ReBarGuid, buf, (uint)buf.Length);
+        lastErr = Marshal.GetLastWin32Error();
+        if (len > 0) {
+            val = buf[0];
+            lastErr = 0;
+        } else {
+            val = 0;
+        }
+        return len;
+    }
+
+    public static bool WriteReBar(byte val, out int lastErr) {
+        byte[] buf = new byte[] { val };
+        bool ok = SetFirmwareEnvironmentVariable("ReBarState", ReBarGuid, buf, 1);
+        lastErr = Marshal.GetLastWin32Error();
+        if (ok) {
+            lastErr = 0;
+        }
+        return ok;
     }
 }
 "@
-Add-Type -TypeDefinition $code
+    Add-Type -TypeDefinition $code
+}
+
+function Format-ReBarStatus([byte]$Value) {
+    if ($Value -eq 0) {
+        return "Disabled"
+    }
+    if ($Value -lt 0x20) {
+        $capMb = ([uint64]1) -shl [int]$Value
+        $capStr = if ($capMb -ge 1024) {
+            "{0:0.##} GB" -f ($capMb / 1024.0)
+        } else {
+            "$capMb MB"
+        }
+        return "Enabled (capped at 2^$Value MB = $capStr)"
+    }
+    return "Enabled / Unlimited"
+}
 
 # Verify UEFI boot mode accurately on Windows 10/11 (kernel32!GetFirmwareType + $env:firmware_type + SecureBoot\State fallback)
 $fwMode = "Unknown"
@@ -61,23 +126,25 @@ if ($fwMode -ne "UEFI") {
     Write-Host "[ERROR] Windows is currently booted in Legacy BIOS (CSM/MBR) mode (FirmwareType=$fwMode)." -ForegroundColor Red
     Write-Host "        To use ReBAR without reflashing:" -ForegroundColor Yellow
     Write-Host "        1. Convert your OS drive to GPT (e.g. mbr2gpt) and boot in UEFI mode." -ForegroundColor Yellow
-    Write-Host "        2. In BIOS: Boot -> CSM Support = Disabled, Video = UEFI, Above 4G Decoding = Enabled." -ForegroundColor Yellow
+    Write-Host "        2. In BIOS: Advanced -> CSM Configuration (CSM Support = Disabled, Video = UEFI)" -ForegroundColor Yellow
+    Write-Host "           and Advanced -> PCI Subsystem Settings (Above 4G Decoding = Enabled)." -ForegroundColor Yellow
     Write-Host "        3. Run this script again from UEFI Windows." -ForegroundColor Yellow
     exit 1
 }
 
 [UefiVarReBar]::EnablePrivilege()
 
-$guid = "{a3c5b77a-c88f-4a93-bf1c-4a92a32c65ce}"
-$buf = New-Object byte[] 4
-$readLen = [UefiVarReBar]::GetFirmwareEnvironmentVariable("ReBarState", $guid, $buf, 4)
-$readErr = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+[byte]$curVal = 0
+[int]$readErr = 0
+$hadReadError = $false
+$readLen = [UefiVarReBar]::ReadReBar([ref]$curVal, [ref]$readErr)
 if ($readLen -gt 0) {
-    Write-Host ("Current NVRAM ReBarState = 0x{0:X2} ({1})" -f $buf[0], $(if ($buf[0] -eq 0) { "Disabled" } else { "Enabled / Unlimited" }))
+    Write-Host ("Current NVRAM ReBarState = 0x{0:X2} ({1})" -f $curVal, (Format-ReBarStatus $curVal))
 } elseif ($readErr -eq 203) {
     Write-Host "Current NVRAM ReBarState is not set (variable does not exist yet)."
 } else {
-    Write-Host "[WARN] Could not read ReBarState (Win32 error $readErr)." -ForegroundColor Yellow
+    $hadReadError = $true
+    Write-Host "[ERROR] Could not read ReBarState (Win32 error $readErr)." -ForegroundColor Red
 }
 
 if (-not $Action) {
@@ -87,29 +154,39 @@ if (-not $Action) {
     Write-Host "  [2] Disable ReBAR (ReBarState = 0x00)"
     Write-Host "  [3] Exit (Status only)"
     $choice = Read-Host "Enter 1, 2 or 3"
-    switch ($choice) {
+    $trimmed = if ($null -ne $choice) { $choice.Trim() } else { "" }
+    switch ($trimmed) {
         "1" { $Action = "Enable" }
         "2" { $Action = "Disable" }
-        default { $Action = "Status" }
+        "3" { $Action = "Status" }
+        default {
+            Write-Host "[ERROR] Invalid selection '$choice'. Please enter 1, 2, or 3." -ForegroundColor Red
+            exit 1
+        }
     }
 }
 
-if ($Action -eq "Status") { exit 0 }
+if ($Action -eq "Status") {
+    if ($hadReadError) { exit 1 }
+    exit 0
+}
 
 $target = if ($Action -eq "Enable") { [byte]0x20 } else { [byte]0x00 }
-$ok = [UefiVarReBar]::SetFirmwareEnvironmentVariable("ReBarState", $guid, [byte[]]@($target), 1)
-$err = [System.Runtime.InteropServices.Marshal]::GetLastWin32Error()
+[int]$writeErr = 0
+$ok = [UefiVarReBar]::WriteReBar($target, [ref]$writeErr)
 if (-not $ok) {
-    Write-Host "[ERROR] Failed to write ReBarState (Win32 error $err)." -ForegroundColor Red
+    Write-Host "[ERROR] Failed to write ReBarState (Win32 error $writeErr)." -ForegroundColor Red
     exit 1
 }
 
-$verify = New-Object byte[] 4
-$vLen = [UefiVarReBar]::GetFirmwareEnvironmentVariable("ReBarState", $guid, $verify, 4)
-if ($vLen -eq 1 -and $verify[0] -eq $target) {
-    Write-Host ("[OK] ReBarState successfully set to 0x{0:X2}!" -f $verify[0]) -ForegroundColor Green
-    Write-Host "     Reboot your PC (and make sure Above 4G Decoding = Enabled and CSM = Disabled in BIOS)." -ForegroundColor Cyan
+[byte]$verVal = 0
+[int]$verErr = 0
+$vLen = [UefiVarReBar]::ReadReBar([ref]$verVal, [ref]$verErr)
+if ($vLen -eq 1 -and $verVal -eq $target) {
+    Write-Host ("[OK] ReBarState successfully set to 0x{0:X2} ({1})!" -f $verVal, (Format-ReBarStatus $verVal)) -ForegroundColor Green
+    Write-Host "     Reboot your PC (and ensure Advanced -> PCI Subsystem Settings -> Above 4G Decoding = Enabled" -ForegroundColor Cyan
+    Write-Host "     and Advanced -> CSM Configuration -> CSM Support = Disabled in BIOS)." -ForegroundColor Cyan
 } else {
-    Write-Host "[ERROR] Verification mismatch after write." -ForegroundColor Red
+    Write-Host ("[ERROR] Verification mismatch after write (len={0}, val=0x{1:X2}, Win32 error {2})." -f $vLen, $verVal, $verErr) -ForegroundColor Red
     exit 1
 }
