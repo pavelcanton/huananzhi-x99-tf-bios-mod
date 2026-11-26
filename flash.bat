@@ -1,5 +1,5 @@
 @echo off
-"%SystemRoot%\System32\chcp.com" 65001 >nul
+"%SystemRoot%\System32\chcp.com" 65001 <nul >nul
 setlocal EnableExtensions DisableDelayedExpansion
 set "ERRORLEVEL="
 set "PS_EXE=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
@@ -14,9 +14,11 @@ if not "%DIR_ERR%"=="0" (
     exit /b 1
 )
 set "WORK_DIR=%CD%"
+set "WORK_DIR_TRIM=%WORK_DIR%"
+if "%WORK_DIR_TRIM:~-1%"=="\" set "WORK_DIR_TRIM=%WORK_DIR_TRIM:~0,-1%"
 
 echo ============================================================================
-echo   HUANANZHI X99-TF (GHX99015) - Modded BIOS v2.1 Flasher (Intel FPT)
+echo   HUANANZHI X99-TF (GHX99015) - Modded BIOS v2.1.1 Flasher (Intel FPT)
 echo ============================================================================
 echo.
 
@@ -172,8 +174,8 @@ if /I not "%FW_TYPE%"=="UEFI" (
     set "LEGACY_WARN=1"
     echo.
     call :safe_echo "[WARN] Режим загрузки текущей Windows НЕ подтверждён как UEFI: FW_TYPE=" FW_TYPE
-    echo        После прошивки %MTAG% ^(CSM=OFF^) MBR-диск в Legacy-режиме не загрузится
-    echo        без mbr2gpt или временного включения CSM Support в BIOS!
+    echo        После прошивки %MTAG% ^(CSM=OFF, Secure Boot=ON^) MBR-диск в Legacy-режиме
+    echo        не загрузится ^(CsmDxe блокирует CSM при Secure Boot^) — сделайте mbr2gpt или выберите 1_Legacy!
 )
 
 :check_bin
@@ -196,8 +198,7 @@ set "SHA_WARN=0"
 if not exist "SHA256SUMS.txt" goto :no_sha_file
 call :verify_sha256
 if not "%SHA_CHK%"=="OK" (
-    call :safe_echo "[ERROR] Контрольная сумма SHA-256 не совпадает с SHA256SUMS.txt: " BIN_PATH
-    echo         Статус проверки: %SHA_CHK%. Файл повреждён! Прошивка отменена.
+    call :print_sha_error
     goto :exit_fail
 )
 echo [OK] SHA-256 прошивки подтверждён по SHA256SUMS.txt.
@@ -240,8 +241,8 @@ for /f "usebackq delims=" %%T in (`call "%PS_EXE%" -NoProfile -InputFormat None 
 if not defined TS set "TS=manual_%RANDOM%_%RANDOM%"
 set "BACKUP_FULL_REL=backup_full_16MB_%TS%.bin"
 set "BACKUP_BIOS_REL=backup_bios_8MB_%TS%.bin"
-set "BACKUP_FULL=%WORK_DIR%\%BACKUP_FULL_REL%"
-set "BACKUP_BIOS=%WORK_DIR%\%BACKUP_BIOS_REL%"
+set "BACKUP_FULL=%WORK_DIR_TRIM%\%BACKUP_FULL_REL%"
+set "BACKUP_BIOS=%WORK_DIR_TRIM%\%BACKUP_BIOS_REL%"
 
 echo.
 echo [2/4] Снятие резервной копии текущего BIOS...
@@ -327,7 +328,7 @@ if /I "%BL_STATE%"=="ON" (
 if "%LEGACY_WARN%"=="1" (
     echo.
     call :safe_echo "[WARN] РЕЖИМ ЗАГРУЗКИ WINDOWS НЕ ПОДТВЕРЖДЁН КАК UEFI: FW_TYPE=" FW_TYPE
-    echo        ВЫБРАН %MTAG% ^(CSM=OFF^)! MBR-диск не загрузится без mbr2gpt или включения CSM!
+    echo        ВЫБРАН %MTAG% ^(CSM=OFF, Secure Boot=ON^)! MBR-диск не загрузится — сделайте mbr2gpt или выберите 1_Legacy!
 )
 if "%SHA_WARN%"=="1" (
     echo.
@@ -359,8 +360,8 @@ if not "%BIN_SIZE%"=="8388608" (
 if "%SHA_WARN%"=="1" goto :step3_flash
 call :verify_sha256
 if not "%SHA_CHK%"=="OK" (
-    call :safe_echo "[ERROR] Повторная проверка SHA-256 перед прошивкой НЕ пройдена: " BIN_PATH
-    echo         Статус проверки: %SHA_CHK%. Прошивка отменена!
+    echo [ERROR] Повторная проверка SHA-256 перед прошивкой НЕ пройдена!
+    call :print_sha_error
     goto :exit_fail
 )
 echo [OK] Повторная проверка SHA-256 перед записью пройдена.
@@ -417,6 +418,18 @@ goto :exit_ok
 set "SHA_CHK=ERR"
 for /f "usebackq delims=" %%H in (`call "%PS_EXE%" -NoProfile -InputFormat None -Command "try { $dir=$env:WORK_DIR; $rel=$env:BIN_REL_POSIX; $bin=[IO.Path]::Combine($dir,$env:BIN_PATH); $sf=[IO.Path]::Combine($dir,'SHA256SUMS.txt'); $exp=$null; foreach($l in [IO.File]::ReadAllLines($sf)){ if($l -match '^([0-9a-fA-F]{64})\s+\*(.+)$' -and $Matches[2] -ceq $rel){ $exp=$Matches[1].ToLowerInvariant(); break } }; if(-not $exp){ 'MISSING' } else { $sha=[Security.Cryptography.SHA256]::Create(); try { $fs=[IO.File]::OpenRead($bin); try { $ah=[BitConverter]::ToString($sha.ComputeHash($fs)).Replace('-','').ToLowerInvariant() } finally { $fs.Dispose() } } finally { $sha.Dispose() }; if($exp -ceq $ah){ 'OK' } else { 'BAD' } } } catch { 'ERR' }" 2^>nul`) do set "SHA_CHK=%%H"
 if not defined SHA_CHK set "SHA_CHK=ERR"
+exit /b 0
+
+:print_sha_error
+if /I "%SHA_CHK%"=="BAD" (
+    echo [ERROR] Контрольная сумма не совпадает — файл повреждён!
+) else if /I "%SHA_CHK%"=="MISSING" (
+    echo [ERROR] Запись для этого файла не найдена в SHA256SUMS.txt!
+) else (
+    echo [ERROR] Ошибка проверки SHA-256!
+)
+call :safe_echo "        Файл: " BIN_PATH
+echo         Статус проверки: %SHA_CHK%. Прошивка отменена.
 exit /b 0
 
 :safe_echo

@@ -61,7 +61,7 @@ public class UefiVarReBar {
     }
 
     public static uint ReadReBar(out byte val, out int lastErr) {
-        byte[] buf = new byte[4];
+        byte[] buf = new byte[64];
         uint len = GetFirmwareEnvironmentVariable("ReBarState", ReBarGuid, buf, (uint)buf.Length);
         lastErr = Marshal.GetLastWin32Error();
         if (len > 0) {
@@ -123,23 +123,42 @@ if ($fwMode -eq "Unknown" -and (Test-Path -LiteralPath "HKLM:\SYSTEM\CurrentCont
 }
 
 if ($fwMode -ne "UEFI") {
-    Write-Host "[ERROR] Windows is currently booted in Legacy BIOS (CSM/MBR) mode (FirmwareType=$fwMode)." -ForegroundColor Red
-    Write-Host "        To use ReBAR without reflashing:" -ForegroundColor Yellow
-    Write-Host "        1. Convert your OS drive to GPT (e.g. mbr2gpt) and boot in UEFI mode." -ForegroundColor Yellow
-    Write-Host "        2. In BIOS: Advanced -> CSM Configuration (CSM Support = Disabled, Video = UEFI)" -ForegroundColor Yellow
-    Write-Host "           and Advanced -> PCI Subsystem Settings (Above 4G Decoding = Enabled)." -ForegroundColor Yellow
-    Write-Host "        3. Run this script again from UEFI Windows." -ForegroundColor Yellow
+    if ($fwMode -eq "Unknown") {
+        Write-Host "[ERROR] Could not verify UEFI firmware mode (FirmwareType=Unknown)." -ForegroundColor Red
+        Write-Host "        Ensure Windows is booted in UEFI mode (not Legacy CSM/MBR) and run as Administrator." -ForegroundColor Yellow
+    } else {
+        Write-Host "[ERROR] Windows is currently booted in Legacy BIOS (CSM/MBR) mode (FirmwareType=$fwMode)." -ForegroundColor Red
+    }
+    Write-Host "        To use ReBAR without reflashing (2-reboot Legacy -> UEFI sequence):" -ForegroundColor Yellow
+    Write-Host "        1. Convert your OS drive to GPT (e.g. mbr2gpt) and prepare to boot in UEFI mode." -ForegroundColor Yellow
+    Write-Host "        2. Reboot #1 in BIOS: Advanced -> CSM Configuration -> Video = UEFI -> F10 & Reboot." -ForegroundColor Yellow
+    Write-Host "        3. Reboot #2 in BIOS: Advanced -> CSM Configuration -> CSM Support = Disabled (hides Video)" -ForegroundColor Yellow
+    Write-Host "           & Advanced -> PCI Subsystem Settings -> Above 4G Decoding = Enabled -> F10." -ForegroundColor Yellow
+    Write-Host "        4. Run this script again from UEFI Windows." -ForegroundColor Yellow
     exit 1
 }
 
-[UefiVarReBar]::EnablePrivilege()
+try {
+    [UefiVarReBar]::EnablePrivilege()
+} catch {
+    Write-Host "[ERROR] Failed to acquire SeSystemEnvironmentPrivilege: $($_.Exception.Message)" -ForegroundColor Red
+    exit 1
+}
 
 [byte]$curVal = 0
 [int]$readErr = 0
 $hadReadError = $false
 $readLen = [UefiVarReBar]::ReadReBar([ref]$curVal, [ref]$readErr)
-if ($readLen -gt 0) {
+if ($readLen -eq 1) {
     Write-Host ("Current NVRAM ReBarState = 0x{0:X2} ({1})" -f $curVal, (Format-ReBarStatus $curVal))
+} elseif ($readLen -gt 1) {
+    Write-Host ("[WARN] Current NVRAM ReBarState has unexpected size {0} bytes (first byte = 0x{1:X2})." -f $readLen, $curVal) -ForegroundColor Yellow
+    Write-Host "       ReBarDxe requires an exact 1-byte variable and treats >1B values as Disabled." -ForegroundColor Yellow
+    Write-Host "       Run with -Action Enable (or -Action Disable) to rewrite ReBarState cleanly as 1 byte." -ForegroundColor Yellow
+} elseif ($readErr -eq 122) {
+    Write-Host "[WARN] Current NVRAM ReBarState exceeds 64 bytes (Win32 error 122)." -ForegroundColor Yellow
+    Write-Host "       ReBarDxe requires an exact 1-byte variable and treats >1B values as Disabled." -ForegroundColor Yellow
+    Write-Host "       Run with -Action Enable (or -Action Disable) to rewrite ReBarState cleanly as 1 byte." -ForegroundColor Yellow
 } elseif ($readErr -eq 203) {
     Write-Host "Current NVRAM ReBarState is not set (variable does not exist yet)."
 } else {
@@ -184,8 +203,14 @@ if (-not $ok) {
 $vLen = [UefiVarReBar]::ReadReBar([ref]$verVal, [ref]$verErr)
 if ($vLen -eq 1 -and $verVal -eq $target) {
     Write-Host ("[OK] ReBarState successfully set to 0x{0:X2} ({1})!" -f $verVal, (Format-ReBarStatus $verVal)) -ForegroundColor Green
-    Write-Host "     Reboot your PC (and ensure Advanced -> PCI Subsystem Settings -> Above 4G Decoding = Enabled" -ForegroundColor Cyan
-    Write-Host "     and Advanced -> CSM Configuration -> CSM Support = Disabled in BIOS)." -ForegroundColor Cyan
+    if ($Action -eq "Enable") {
+        Write-Host "     Reboot your PC and ensure BIOS is configured (2-reboot sequence if switching from Legacy CSM):" -ForegroundColor Cyan
+        Write-Host "     1. Advanced -> CSM Configuration -> Video = UEFI -> F10 & Reboot;" -ForegroundColor Cyan
+        Write-Host "     2. Advanced -> CSM Configuration -> CSM Support = Disabled (hides Video)" -ForegroundColor Cyan
+        Write-Host "        & Advanced -> PCI Subsystem Settings -> Above 4G Decoding = Enabled -> F10." -ForegroundColor Cyan
+    } else {
+        Write-Host "     Reboot your PC for the disabled ReBAR state to take effect." -ForegroundColor Cyan
+    }
 } else {
     Write-Host ("[ERROR] Verification mismatch after write (len={0}, val=0x{1:X2}, Win32 error {2})." -f $vLen, $verVal, $verErr) -ForegroundColor Red
     exit 1

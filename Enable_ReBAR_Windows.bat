@@ -1,6 +1,6 @@
 @echo off
-"%SystemRoot%\System32\chcp.com" 65001 >nul
-setlocal EnableExtensions
+"%SystemRoot%\System32\chcp.com" 65001 <nul >nul
+setlocal EnableExtensions DisableDelayedExpansion
 set "ERRORLEVEL="
 
 pushd "%~dp0" >nul 2>&1
@@ -22,7 +22,7 @@ if not "%ADM_ERR%"=="0" (
     exit /b 1
 )
 
-"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File ".\Enable_ReBAR_Windows.ps1"
+"%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -ExecutionPolicy Bypass -File ".\Enable_ReBAR_Windows.ps1" %*
 set "PS_ERR=%errorlevel%"
 if not "%PS_ERR%"=="0" (
     echo [ERROR] Enable_ReBAR_Windows.ps1 завершился с ошибкой %PS_ERR%.
