@@ -18,7 +18,7 @@ set "WORK_DIR_TRIM=%WORK_DIR%"
 if "%WORK_DIR_TRIM:~-1%"=="\" set "WORK_DIR_TRIM=%WORK_DIR_TRIM:~0,-1%"
 
 echo ============================================================================
-echo   HUANANZHI X99-TF (GHX99015) - Modded BIOS v2.1.1 Flasher (Intel FPT)
+echo   HUANANZHI X99-TF (GHX99015) - Modded BIOS v2.1.2 Flasher (Intel FPT)
 echo ============================================================================
 echo.
 
@@ -36,9 +36,9 @@ if not exist "tools\fptw64.exe" (
     goto :exit_fail
 )
 
-:: Safety check #1: Strict SMBIOS board & BIOS check (rejects incompatible X99-TF-Q / X99-TF_Q / X99-TF Q / X99-TF8 / X99-TF GAMING!)
+:: Safety check #1: Strict SMBIOS board & BIOS check (rejects incompatible X99-TF-Q / X99-TF_Q / X99-TF Q / X99-TF8 / X99-TF GAMING / X99-TF.Q!)
 set "BOARD_CHK="
-for /f "usebackq delims=" %%S in (`call "%PS_EXE%" -NoProfile -InputFormat None -Command "$errs=@(); $bb=$null; $bi=$null; try { $bb=Get-CimInstance Win32_BaseBoard -ErrorAction Stop } catch { $errs += ('BaseBoard: ' + $_.Exception.Message) }; try { $bi=Get-CimInstance Win32_BIOS -ErrorAction Stop } catch { $errs += ('BIOS: ' + $_.Exception.Message) }; $txt=(($bb.Manufacturer+' '+$bb.Product+' '+$bi.SMBIOSBIOSVersion+' '+$bi.Name) -replace '\s+',' ').Trim(); $bad=($txt -match '(?<![A-Za-z0-9])X99-TF(?:[-_/][A-Za-z0-9]|[A-Za-z0-9])') -or ($txt -match '(?<![A-Za-z0-9])X99-TF\s+(?:Q|GAMING)(?![A-Za-z0-9])'); $ok=(-not $bad) -and (($txt -match '(?<![A-Za-z0-9])X99-TF(?![A-Za-z0-9_/-])') -or ($txt -match '(?<![A-Za-z0-9])GHX9901[45](?![A-Za-z0-9])')); $re='[\r\n\x22\x25\x26\x21\x28\x29\x3C\x3E\x5E\x7C]'; if ($ok) { 'OK' } elseif ($txt -and $errs.Count -gt 0) { 'MISMATCH: ' + ($txt -replace $re,'_').Trim() + ' [WMI: ' + (($errs -join '; ') -replace $re,'_').Trim() + ']' } elseif ($txt) { 'MISMATCH: ' + ($txt -replace $re,'_').Trim() } elseif ($errs.Count -gt 0) { 'WMI_ERROR: ' + (($errs -join '; ') -replace $re,'_').Trim() } else { 'UNKNOWN (empty SMBIOS)' }" 2^>nul`) do set "BOARD_CHK=%%S"
+for /f "usebackq delims=" %%S in (`call "%PS_EXE%" -NoProfile -InputFormat None -Command "$errs=@(); $bb=$null; $bi=$null; try { $bb=Get-CimInstance Win32_BaseBoard -ErrorAction Stop } catch { $errs += ('BaseBoard: ' + $_.Exception.Message) }; try { $bi=Get-CimInstance Win32_BIOS -ErrorAction Stop } catch { $errs += ('BIOS: ' + $_.Exception.Message) }; $txt=(($bb.Manufacturer+' '+$bb.Product+' '+$bi.SMBIOSBIOSVersion+' '+$bi.Name) -replace '\s+',' ').Trim(); $bad=($txt -match '(?<![A-Za-z0-9])X99-TF(?:[-_/.+][A-Za-z0-9]|[A-Za-z0-9]|\s*\()') -or ($txt -match '(?<![A-Za-z0-9])X99-TF\s+(?:Q|GAMING|PRO|PLUS|V\d)(?![A-Za-z0-9])') -or ($txt -match '(?<![A-Za-z0-9])GAMING(?![A-Za-z0-9])'); $ok=(-not $bad) -and (($txt -match '(?<![A-Za-z0-9])X99-TF(?![A-Za-z0-9_/.+\-(])') -or ($txt -match '(?<![A-Za-z0-9])GHX9901[45](?![A-Za-z0-9])')); $re='[\r\n\x22\x25\x26\x21\x28\x29\x3C\x3E\x5E\x7C]'; if ($ok) { 'OK' } elseif ($txt -and $errs.Count -gt 0) { 'MISMATCH: ' + ($txt -replace $re,'_').Trim() + ' [WMI: ' + (($errs -join '; ') -replace $re,'_').Trim() + ']' } elseif ($txt) { 'MISMATCH: ' + ($txt -replace $re,'_').Trim() } elseif ($errs.Count -gt 0) { 'WMI_ERROR: ' + (($errs -join '; ') -replace $re,'_').Trim() } else { 'UNKNOWN (empty SMBIOS)' }" 2^>nul`) do set "BOARD_CHK=%%S"
 if not defined BOARD_CHK set "BOARD_CHK=UNKNOWN (PowerShell/WMI unavailable)"
 setlocal EnableDelayedExpansion
 if "!BOARD_CHK!"=="OK" (
@@ -408,7 +408,8 @@ echo.
 echo ============================================================================
 echo   ГОТОВО! Прошивка и верификация прошли на 100%%!
 call :safe_echo "  Бэкап сохранён: " BACKUP_FILE
-echo   Перезагрузите ПК. Первый запуск и тренировка RAM займут ~15-30 сек.
+echo   Выключите ПК полностью на 10 секунд и включите заново ^(холодный старт^).
+echo   Первый запуск и тренировка RAM займут ~15-30 сек.
 echo   Подсказка: если меняете андервольт/тайминги в BIOS и нет старта -
 echo   сброс CMOS ^(JCMOS^) всегда безопасно вернёт профиль Safe Stock.
 echo ============================================================================
@@ -416,7 +417,7 @@ goto :exit_ok
 
 :verify_sha256
 set "SHA_CHK=ERR"
-for /f "usebackq delims=" %%H in (`call "%PS_EXE%" -NoProfile -InputFormat None -Command "try { $dir=$env:WORK_DIR; $rel=$env:BIN_REL_POSIX; $bin=[IO.Path]::Combine($dir,$env:BIN_PATH); $sf=[IO.Path]::Combine($dir,'SHA256SUMS.txt'); $exp=$null; foreach($l in [IO.File]::ReadAllLines($sf)){ if($l -match '^([0-9a-fA-F]{64})\s+\*(.+)$' -and $Matches[2] -ceq $rel){ $exp=$Matches[1].ToLowerInvariant(); break } }; if(-not $exp){ 'MISSING' } else { $sha=[Security.Cryptography.SHA256]::Create(); try { $fs=[IO.File]::OpenRead($bin); try { $ah=[BitConverter]::ToString($sha.ComputeHash($fs)).Replace('-','').ToLowerInvariant() } finally { $fs.Dispose() } } finally { $sha.Dispose() }; if($exp -ceq $ah){ 'OK' } else { 'BAD' } } } catch { 'ERR' }" 2^>nul`) do set "SHA_CHK=%%H"
+for /f "usebackq delims=" %%H in (`call "%PS_EXE%" -NoProfile -InputFormat None -Command "try { $dir=$env:WORK_DIR; $rel=$env:BIN_REL_POSIX; $bin=[IO.Path]::Combine($dir,$env:BIN_PATH); $sf=[IO.Path]::Combine($dir,'SHA256SUMS.txt'); $exp=$null; foreach($l in [IO.File]::ReadAllLines($sf)){ if($l -match '\A([0-9a-fA-F]{64})\s+\*(.+)\z' -and $Matches[2] -ceq $rel){ $exp=$Matches[1].ToLowerInvariant(); break } }; if(-not $exp){ 'MISSING' } else { $sha=[Security.Cryptography.SHA256]::Create(); try { $fs=[IO.File]::OpenRead($bin); try { $ah=[BitConverter]::ToString($sha.ComputeHash($fs)).Replace('-','').ToLowerInvariant() } finally { $fs.Dispose() } } finally { $sha.Dispose() }; if($exp -ceq $ah){ 'OK' } else { 'BAD' } } } catch { 'ERR' }" 2^>nul`) do set "SHA_CHK=%%H"
 if not defined SHA_CHK set "SHA_CHK=ERR"
 exit /b 0
 

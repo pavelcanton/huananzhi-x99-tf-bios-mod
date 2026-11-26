@@ -1,13 +1,13 @@
-# Huananzhi X99-TF — модифицированный BIOS v2.1.1 (GHX99015, 25.05.2020)
+# Huananzhi X99-TF — модифицированный BIOS v2.1.2 (GHX99015, 25.05.2020)
 
-Пакет готовых прошивок **v2.1.1** (бинарники BIOS идентичны `v2.1`, обновлены скрипты прошивки/ReBAR и документация) для **HUANANZHI X99-TF** на базе сборки [Koshak1013](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`GHX99015`, 25.05.2020): анлок Turbo Boost для Xeon E5 v3, **живой андервольт и лок Ring/Uncore прямо в меню BIOS с реальным сохранением по `F10`**, 25 разблокированных подменю, расшитые лимиты питания, ReBAR, чистый Secure Boot **2011 + 2023 без уязвимости `PKfail` + 443 отзыва `dbx`**, TPM 2.0, работающий `Intel VT-x` и исправленный SmartFan V3 (с поддержкой S3-сна).
+Пакет готовых прошивок **v2.1.2** (бинарники BIOS идентичны `v2.1` / `v2.1.1`, усилена безопасность скриптов прошивки/ReBAR и уточнена документация) для **HUANANZHI X99-TF** на базе сборки [Koshak1013](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`GHX99015`, 25.05.2020): анлок Turbo Boost для Xeon E5 v3, **живой андервольт и лок Ring/Uncore прямо в меню BIOS с реальным сохранением по `F10`**, 25 разблокированных подменю, расшитые лимиты питания, ReBAR, чистый Secure Boot **2011 + 2023 без уязвимости `PKfail` + 443 отзыва `dbx`**, TPM 2.0, работающий `Intel VT-x` и исправленный SmartFan V3 (с поддержкой S3-сна).
 
 Вместо 4 жёстких тиров андервольта из v1.1 теперь достаточно **2 профилей × 3 режима = 6 сборок** — все параметры разгона и тайминги ОЗУ можно настраивать в моменте в BIOS Setup, а сброс CMOS гарантированно возвращает безопасный `Safe Stock`.
 
 *English summary is at the bottom.*
 
 > [!TIP]
-> **Скачать всё одним архивом:** [страница Releases](../../releases/latest) → файл `X99TF_GHX99015_BIOS_Pack_v2.1.1.zip`. Или берите отдельные файлы прямо из папок ниже.
+> **Скачать всё одним архивом:** [страница Releases](../../releases/latest) → файл `X99TF_GHX99015_BIOS_Pack_v2.1.2.zip`. Или берите отдельные файлы прямо из папок ниже.
 
 > [!CAUTION]
 > **Только для HUANANZHI X99-TF (`GHX99014` / `GHX99015`).** Не шейте на другие платы X99 (Machinist, Kllisre, Qiyida, Jingsha, другие модели Huananzhi и т.д.): у них другие Flash Descriptor, разводка памяти, Super I/O, GPIO и линии PCIe — высокий риск «кирпича» с восстановлением только программатором.
@@ -16,13 +16,19 @@
 
 ---
 
-## Что нового в v2.0 / v2.1 / v2.1.1
+## Что нового в v2.0 / v2.1 / v2.1.1 / v2.1.2
 
 > [!IMPORTANT]
-> **Обслуживающий релиз v2.1.1 (все 12 образов BIOS байт-в-байт идентичны `v2.1` — перепрошиваться с `v2.1` не нужно):**
-> * **`Enable_ReBAR_Windows.ps1` / `.bat`:** строгая проверка 1-байтного контракта `ReBarDxe` (`DataSize = 1`; переменные `>1 B` помечаются `[WARN]` как неактивные), корректный вывод инструкций (без подсказки Enable при `-Action Disable`), точная 2-перезагрузочная инструкция Legacy → UEFI, обработка `FirmwareType = Unknown` и `try/catch` вокруг `EnablePrivilege()`; в `.bat` добавлены `DisableDelayedExpansion` и проброс CLI-аргументов `%*` (`Enable_ReBAR_Windows.bat -Action Status`).
+> **Обслуживающий релиз v2.1.2 (все 12 образов BIOS байт-в-байт идентичны `v2.1` и `v2.1.1` — перепрошиваться с `v2.1`/`v2.1.1` не нужно):**
+> * **`Enable_ReBAR_Windows.bat` (безопасность):** полностью убраны инъекции аргументов (`set "_ARG1=%~1"` и проброс сырого `%*`); лаунчер безопасно читает аргументы и передаёт в PowerShell только строго разрешённый список (`-Action Enable|Disable|Status`), корректно завершаясь без `pause` при любых CLI-аргументах.
+> * **`Enable_ReBAR_Windows.ps1`:** при неожиданной ошибке чтения UEFI-переменной `ReBarState` (кроме кодов `122`/`203`) скрипт немедленно завершается (`exit 1`) без попытки записи в NVRAM.
+> * **`flash.bat`:** исправлена регулярка проверки `SHA256SUMS.txt` под `call` (`\A...\z` без символа `^`), усилена проверка SMBIOS-имени платы и синхронизирована финальная подсказка про 10-секундный холодный старт.
+> * **`README.md`:** исправлены точный путь `UFS` (`IntelRCSetup → Advanced Power Management Configuration`), описание `MC0/MC1 PKGC CLK GATE DISABLE` (`значение 1 = Disable в BIOS`), упоминание `SATA/sSATA AHCI ALPM` и `LPM`, точные названия пунктов IFR (`CPU - Advanced PM Tuning`, `CPU VCCin Voltage Level`, `VccIo Voltage Control`, `VCCU Voltage Offset`) и уточнение по `MokManager` (для загрузчиков на базе `shim`).
+>
+> **Обслуживающий релиз v2.1.1 (все 12 образов BIOS байт-в-байт идентичны `v2.1`):**
+> * **`Enable_ReBAR_Windows.ps1` / `.bat`:** строгая проверка 1-байтного контракта `ReBarDxe` (`DataSize = 1`; переменные `>1 B` помечаются `[WARN]` как неактивные), корректный вывод инструкций (без подсказки Enable при `-Action Disable`), точная 2-перезагрузочная инструкция Legacy → UEFI, обработка `FirmwareType = Unknown` и `try/catch` вокруг `EnablePrivilege()`; в `.bat` добавлены `DisableDelayedExpansion` и поддержка CLI-аргументов.
 > * **`flash.bat`:** защищён `chcp.com 65001 <nul >nul`, убран двойной слэш `Z:\\` в корне дисков, разделены сообщения об ошибках SHA-256 (`BAD` / `MISSING` / `ERR`), убрано некорректное упоминание включения CSM при активном Secure Boot.
-> * **`README.md`:** исправлен совет по восстановлению при активном Secure Boot (`CsmDxe` блокирует CSM), уточнена 2-этапная последовательность перехода с `1_Legacy` на UEFI+ReBAR, синхронизированы все названия пунктов/путей IFR, перечислены все 10 предзаполненных таймингов Micron и добавлены примечания по особенностям платформы.
+> * **`README.md`:** исправлен совет по восстановлению при активном Secure Boot (`CsmDxe` блокирует CSM), уточнена 2-этапная последовательность перехода с `1_Legacy` на UEFI+ReBAR, перечислены все 10 предзаполненных таймингов Micron и добавлены примечания по особенностям платформы.
 >
 > **Исправления v2.1 (обязательно к обновлению с v2.0):**
 > * Исправлен `GUID_STD_DEFAULTS` (`4599D26F-...`) в таблице NVRAM: в `v2.0` при первом старте `02_Performance_OC` срабатывал Bank Swap со сбросом 23 настроек в `01_Safe_Stock` — теперь **`02_Performance_OC` (`−50/−40 mV`, лок Ring, C-States OFF, IMC) гарантированно применяется с первого холодного старта**!
@@ -51,7 +57,7 @@
 | Папка | Что активно сразу после прошивки | Для кого |
 | :--- | :--- | :--- |
 | **`01_Safe_Stock`** | Анлок Turbo Boost, `0 / 0 mV`, динамический Ring (`CLR = 0`), **`C1E / C2 / C3 = ON, C6 = OFF`**, контроллер памяти и ОЗУ в `Auto`, все ядра активны | Максимальная стабильность «из коробки», **лучший выбор для Xeon E5 v4** или если хотите крутить всё вручную с нуля |
-| **`02_Performance_OC`** | Анлок Turbo Boost, универсальный безопасный андервольт **`−50 mV Core / −40 mV Ring`**, **лок Ring на максимум CPU** (`CLR = 30`, авто-ограничение под модель v3), C-States OFF (`C0/C1`, `C1E/C3/C6` выкл.), безопасный тюнинг IMC (`Early Snoop`, `Open Page`, `Turnaround Opt`, `CKE/OppSR/MDLL Off/Set Throttling Mode/Scrub/SATA+sSATA AHCI LPM` выкл., `MC0/MC1 PKGC CLK GATE DISABLE`), **ОЗУ и `tREFI` в `Auto`**, все ядра активны | **Рекомендуется для большинства Xeon E5 v3.** Мгновенный прирост отзывчивости и снижение задержек на любой памяти DDR4; сброс CMOS всегда вернёт `Safe Stock` |
+| **`02_Performance_OC`** | Анлок Turbo Boost, универсальный безопасный андервольт **`−50 mV Core / −40 mV Ring`**, **лок Ring на максимум CPU** (`CLR = 30`, авто-ограничение под модель v3), C-States OFF (`C0/C1`, `C1E/C3/C6` выкл.), безопасный тюнинг IMC (`Early Snoop`, `Open Page`, `Turnaround Opt`, `CKE/OppSR/MDLL Off/Set Throttling Mode/Scrub/SATA+sSATA AHCI ALPM/LPM` выкл., `MC0/MC1 PKGC CLK GATE DISABLE`), **ОЗУ и `tREFI` в `Auto`**, все ядра активны | **Рекомендуется для большинства Xeon E5 v3.** Мгновенный прирост отзывчивости и снижение задержек на любой памяти DDR4; сброс CMOS всегда вернёт `Safe Stock` |
 
 > [!NOTE]
 > Оба профиля собраны на **идентичном** коде BIOS (`FV0` / `FV1` / `StdDefaults` совпадают байт-в-байт). В любой момент вы можете перенастроить андервольт, Ring, ядра, C-States или тайминги ОЗУ прямо в BIOS Setup без перепрошивки.
@@ -161,7 +167,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 | **C-States / задержка пробуждения** | `IntelRCSetup → Advanced Power Management Configuration → CPU C State Control` | Для минимальных задержек и стабильного андервольта: `Package C State limit = C0/C1`, `C3 = Disable`, `C6 = Disable`, **`Enhanced Halt State (C1E) = Disable`** (в `02_Performance_OC` уже настроено). Варианты `Package C State limit`: `C0/C1`, `C2`, `C6(non Retention)`, `C6(Retention)` (пункта `Auto` нет; в `01_Safe_Stock` заданы `C2`, `C1E/C3 = Enable`, `C6 = Disable`). |
 | **Режим снупинга (L3 / IMC)** | `IntelRCSetup → QPI Configuration → QPI General Configuration` | `COD Enable = Disable`, **`Early Snoop = Enable`** (ускоряет доступ к памяти на многоядерных Xeon; в `02_Performance_OC` уже включено). |
 | **Частота, тайминги и `tREFI` ОЗУ** | `IntelRCSetup → Memory Configuration → Memory Frequency` и `Memory Timings & Voltage Override` | Потолок DDR4 на Xeon E5 v3 — **2133 МГц** (`2133` или `Auto`; на Xeon E5 v4 поддерживается до **2400 МГц**). Для ручной настройки поставьте `DIMM profile = MANUAL`: откроются тайминги, `Command Timing` (`1N`/`2N`), `Memory Voltage` *(NO-OP на X99-TF, см. ниже)* и **`Refresh Rate`** (`tREFI`). Увеличение `Refresh Rate` до **`32760`** (при хорошем обдуве модулей) заметно снижает задержку ОЗУ. **Внимание:** в `MANUAL` предзаполнены все 10 жёстких таймингов под чипы **Micron** (`tCL=12, tRP=12, tRCD=12, tRAS=28, tWR=12, tRFC=200, tRRD=4, tRTP=6, tFAW=16, tCWL=11`) — на планках Hynix / обычной DDR4 выставите ненужные в `0` (`Auto`) или ослабьте до сохранения `F10` и проверяйте в TestMem5! |
-| **Ускорение контроллера памяти (IMC)** | `IntelRCSetup → Memory Configuration` | `Page Policy → Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal` → **`Set Throttling Mode = Disabled`**, **`MDLL Off = Disabled`**, `Memory Power Savings Mode = User Defined` → **`Memory Power Savings Advanced Options`** (`CKE Throttling = Off`, `Opportunistic SR = Disabled`); `Memory RAS Configuration` → `Patrol/Demand Scrub = Disable`. Также в `02_Performance_OC` отключены **`SATA/sSATA AHCI LPM`** и включены **`MC0/MC1 PKGC CLK GATE DISABLE`** (`CPU Advanced PM Tuning → Program CSR_SAPMCTL`). |
+| **Ускорение контроллера памяти (IMC)** | `IntelRCSetup → Memory Configuration` | `Page Policy → Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal` → **`Set Throttling Mode = Disabled`**, **`MDLL Off = Disabled`**, `Memory Power Savings Mode = User Defined` → **`Memory Power Savings Advanced Options`** (`CKE Throttling = Off`, `Opportunistic SR = Disabled`); `Memory RAS Configuration` → `Patrol/Demand Scrub = Disable`. Также в `02_Performance_OC` отключены **`SATA/sSATA AHCI ALPM`** и **`LPM`**, и задан **`MC0/MC1 PKGC CLK GATE DISABLE`** (`значение 1 = Disable в BIOS`, путь `CPU - Advanced PM Tuning → Program CSR_SAPMCTL`). |
 | **PCIe / Above 4G** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` для UEFI/ReBAR), `PCI Express Settings`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`. |
 | **Защита от перегрева (PROCHOT#)** | `IntelRCSetup → Advanced Power Management Configuration → CPU Thermal Management` | Держите `Bi-directional PROCHOT# = Bidirectional (normal input response)` (защита VRM). |
 | **Кривая вентилятора CPU** | `Advanced → Hardware Monitor` | Точки `T1–T5`, `PWM1–PWM4`. В v2.1 `T5` (`78°C`) корректно задаёт порог 100% оборотов и переживает сон S3. |
@@ -175,17 +181,17 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 
 > [!WARNING]
 > **Что НЕ рекомендуется менять без понимания:**
-> * **`UFS`** (`IntelRCSetup → Advanced Power Management Configuration → CPU P State Control`) — оставьте **`Enable`** (`0`). Его отключение на Haswell-EP ломает работу `MSR 0x620` и заметно роняет пропускную способность ОЗУ.
-> * **`Energy Efficient Turbo`** (`CPU Advanced PM Tuning → Program PowerCTL_MSR`, `Enable [0]`) и **`Energy Performance BIAS setting.`** (`CPU Advanced PM Tuning → Energy Perf BIAS`, `Balanced Performance [7]`; пункт отображается серым, пока `Energy Performance Tuning = Enable [0]`, т.к. EPB управляется ОС через `MSR 0x1B0`) — оптимальны для стабильного буста без залипаний частоты на 1200 МГц.
+> * **`UFS`** (`IntelRCSetup → Advanced Power Management Configuration`, варианты: `0 = Enabled`, `1 = Disabled`) — оставьте **`Enabled`** (`0`). Его отключение на Haswell-EP ломает работу `MSR 0x620` и заметно роняет пропускную способность ОЗУ.
+> * **`Energy Efficient Turbo`** (`CPU - Advanced PM Tuning → Program PowerCTL_MSR`, `Enable [0]`) и **`Energy Performance BIAS setting.`** (`CPU - Advanced PM Tuning → Energy Perf BIAS`, `Balanced Performance [7]`; пункт отображается серым, пока `Energy Performance Tuning = Enable [0]`, т.к. EPB управляется ОС через `MSR 0x1B0`) — оптимальны для стабильного буста без залипаний частоты на 1200 МГц.
 > * **`Fast Boot = Disabled`** — гарантирует корректную инициализацию USB/PCIe/ReBAR.
-> * **`Current Config = Disable`** (`0`, путь `CPU Advanced PM Tuning → Program PP0_CURT_CFG_CTRL_MSR`) — не занижайте заводской лимит тока CPU.
+> * **`Current Config = Disable`** (`0`, путь `CPU - Advanced PM Tuning → Program PP0_CURT_CFG_CTRL_MSR`) — не занижайте заводской лимит тока CPU.
 > * **`MSR Lock Control`** (`Processor Configuration`) — оставьте **`Enable`** (`1`), иначе отключится аппаратная виртуализация `Intel VT-x` (`MSR 0x3A`).
 > * **`Power Technology`** — в v1.1 его нельзя было менять на `Custom`; **в v2.0+ этот баг полностью исправлен**, режим `Custom` стоит по умолчанию и работает стабильно.
 
 > [!NOTE]
 > **Известные особенности платформы / прошивки:**
 > * **`CLR Min Ratio`** (`IntelSetup[0x17A7]`) игнорируется, когда `CLR Max OC Ratio` задан (`> 0`): `NalexOverclock` фиксирует Ring как `MIN = MAX` через `MSR 0x620`.
-> * **`Energy efficient P-state`**, **`CPU VCCin Level`**, **`VccIo`**, **`VCCU`** и **`AVX2 Negative Offset`** являются программными NO-OP на этой плате (не применяются прошивкой).
+> * **`Energy efficient P-state`**, **`CPU VCCin Voltage Level`**, **`VccIo Voltage Control`**, **`VCCU Voltage Offset`** и **`AVX2 Negative Offset`** являются программными NO-OP на этой плате (не применяются прошивкой).
 > * **`Memory Voltage`** требует SVID-совместимый контроллер питания ОЗУ — на HUANANZHI X99-TF напряжение DDR4 аппаратно зафиксировано на `1.20 V` и из BIOS не меняется.
 > * **`ReBarDxe`** конфигурирует PCIe BAR на холодном старте и полагается на драйвер видеокарты ОС для восстановления состояния ReBAR после выхода из сна S3.
 
@@ -220,7 +226,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 | Чёрный экран после ручного андервольта / таймингов ОЗУ в BIOS | Переразгон CPU или памяти | Полностью обесточьте ПК и сбросьте CMOS перемычкой `JCMOS` (или снимите батарейку на 1–2 мин) — BIOS безопасно откатится в `01_Safe_Stock` (`0/0 mV`, ОЗУ `Auto`) с сохранением режима UEFI/SB/TPM! |
 | Синие экраны / зависания на `02_Performance_OC` (Xeon E5 v3) | Неудачный кристалл не держит `−50 / −40 мВ` или лок Ring | Зайдите в `IntelRCSetup → OverClocking Feature` и ослабьте оффсеты (например `−30 / −20 мВ` или `0 / 0`) или поставьте `CLR Max OC Ratio = 0` → `F10`. Перепрошивать BIOS больше не нужно! |
 | Чёрный экран на старой видеокарте в UEFI-режиме | Видеокарта без UEFI GOP (`CsmDxe` безусловно блокирует CSM при активном Secure Boot, поэтому включить CSM в меню `2_UEFI_SB`/`3_UEFI_SB_TPM` невозможно) | Прошейте **`1_Legacy`** (временно установив видеокарту с UEFI GOP для прошивки из Windows либо через программатор CH341A) |
-| Загрузочная флешка (Ventoy, Strelec) выдаёт `Security Violation` | Сторонний `.efi` не подписан ключами MS | В MokManager выберите `Enroll hash from disk` и укажите `.efi`-файл с флешки, либо используйте `1_Legacy` |
+| Загрузочная флешка (Ventoy, Linux, WinPE/Strelec) выдаёт `Security Violation` | Сторонний `.efi` не подписан ключами MS | Для загрузчиков на базе `shim` (например, Ventoy с включённым Secure Boot Support или Linux) в `MokManager` выберите `Enroll hash from disk` / `Enroll key from disk`; для неподписанных автономных `.efi`-утилит (без `shim`) используйте `1_Legacy` |
 
 ---
 
@@ -238,8 +244,13 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 
 ## English summary
 
-* **Download all builds as one archive:** [Releases](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v2.1.1.zip`, or grab individual files from the folders.
+* **Download all builds as one archive:** [Releases](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v2.1.2.zip`, or grab individual files from the folders.
 * **For HUANANZHI X99-TF (`GHX99014` / `GHX99015`) only.** Do not flash onto any other X99 motherboard.
+* **What's new in v2.1.2 (maintenance release; all 12 BIOS `.bin` images are byte-for-byte identical to `v2.1` and `v2.1.1`):**
+  * **Hardened `Enable_ReBAR_Windows.bat`:** eliminates command/quote injection from `_ARG1=%~1` and raw `%*` forwarding; captures arguments safely and forwards only strictly allowlisted `-Action Enable|Disable|Status` flags to PowerShell (exits cleanly without `pause` on any CLI args).
+  * **Hardened `Enable_ReBAR_Windows.ps1`:** aborts immediately (`exit 1`) on unexpected `ReBarState` read errors (other than Win32 `122`/`203`) instead of continuing into `WriteReBar`.
+  * **Hardened `flash.bat`:** replaces `^`/`$` with `\A...\z` inside `call` SHA-256 verification regex, tightens SMBIOS board matching, and aligns post-flash guidance with the 10-second cold shutdown.
+  * **Documentation accuracy (`README.md`):** corrects the `UFS` menu path (`IntelRCSetup → Advanced Power Management Configuration`, `0 = Enabled`, `1 = Disabled`), clarifies `MC0/MC1 PKGC CLK GATE DISABLE` (`1 = Disable` in BIOS) and `SATA/sSATA AHCI ALPM` + `LPM`, uses exact IFR titles (`CPU - Advanced PM Tuning`, `CPU VCCin Voltage Level`, `VccIo Voltage Control`, `VCCU Voltage Offset`), and notes that `MokManager` applies to `shim`-based loaders (e.g. Ventoy).
 * **What's new in v2.1.1 (maintenance release; all 12 BIOS `.bin` images are byte-for-byte identical to `v2.1`):**
   * **Hardened `Enable_ReBAR_Windows.ps1` / `.bat`:** enforces `ReBarDxe`'s exact 1-byte `DataSize = 1` contract (warns if `>1B`), gates post-write BIOS hints to `-Action Enable`, documents the mandatory 2-reboot Legacy → UEFI sequence (`Video = UEFI` → reboot → `CSM Support = Disabled` + `Above 4G Decoding = Enabled`), handles `FirmwareType = Unknown` and `EnablePrivilege()` errors cleanly, and forwards `%*` CLI arguments in the `.bat` launcher.
   * **Hardened `flash.bat`:** adds `chcp.com 65001 <nul >nul`, trims trailing `\` on root drives (`Z:\`), differentiates `BAD`/`MISSING`/`ERR` SHA-256 errors, and removes inaccurate CSM recovery text on Secure Boot builds.
@@ -254,7 +265,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
   * **`PKfail` (CVE-2024-8105) eliminated + March 2026 `dbx`:** compromised `AMI Test PK` completely purged from `PK`, `PKDefault`, and `dbtDefault`; replaced with a clean 2048-bit **`HUANANZHI X99-TF Community Platform Key`** (`2026–2056`, ephemeral private key shredded immediately after signing), Microsoft **2011 + 2023** `KEK`/`db` CAs, official March 2026 Microsoft **`dbx` (443 SHA-256 revocations)**, and clean native 43-byte AMI AuthVar ExtHeaders.
   * **Platform bugfixes & 25 unlocked menus:** SmartFan V3 `70°C → 78°C` `CRITICAL_TEMP` + S3 fix (`F217C2E9`), `Power Technology = Custom` fixed & enabled by default (un-grays `CPU P/C/T State` & `C1E`), RAPL below-P1 clamp fixed (`Pkg Clmp Lim1/2 = 0`), `_FIT_` microcode pointers fixed (`306F2` removed for v3 unlock, `406F1 rev 0xB000040` kept for v4), C612 PCH Thermal sensor enabled, `Timeout = 3s`, `XHCI Idle L1 = Disabled`, `PCIe Relaxed Ordering / Extended Tag = Enabled`, `ASPM = Disabled`.
 * **Clean 2 × 3 matrix (6 builds / 12 binaries):**
-  * Profiles: **`01_Safe_Stock`** (`0/0 mV`, dynamic Ring, `C1E/C2/C3 ON, C6 OFF`, IMC/RAM Auto, All Cores — best for v4 / cautious start) and **`02_Performance_OC`** (`−50/−40 mV`, auto-clamped Ring lock, C-States OFF, safe universal IMC + AHCI LPM + `CSR_SAPMCTL` tweaks, **RAM & `tREFI` Auto**, All Cores — recommended for Xeon v3). **Clear CMOS (`JCMOS`) always rolls back to `01_Safe_Stock` in every build.**
+  * Profiles: **`01_Safe_Stock`** (`0/0 mV`, dynamic Ring, `C1E/C2/C3 ON, C6 OFF`, IMC/RAM Auto, All Cores — best for v4 / cautious start) and **`02_Performance_OC`** (`−50/−40 mV`, auto-clamped Ring lock, C-States OFF, safe universal IMC + AHCI ALPM/LPM + `CSR_SAPMCTL` tweaks, **RAM & `tREFI` Auto**, All Cores — recommended for Xeon v3). **Clear CMOS (`JCMOS`) always rolls back to `01_Safe_Stock` in every build.**
   * Modes: `1_Legacy` (CSM), `2_UEFI_SB` (Pure UEFI + ReBAR + Secure Boot), `3_UEFI_SB_TPM` (+ TPM 2.0 for `TPM-LPC-X2` / Infineon SLB9665 on `JLPC1`/`DEBUG1`). Secure Boot and TPM remain hidden in BIOS menus, so pick the mode at flash time.
 * **Flashing:** run `flash.bat` as Administrator (auto-backs up 16 MB or 8 MB, flashes **only the 8 MB BIOS region**, and verifies). `*_16MB_CH341A.bin` files (clean stock FD + ME `9.1.37.1002`) are for external SPI programmers only.
 * **Post-flash:** rename `C:\Windows\System32\mcupdate_GenuineIntel.dll` for Xeon v3 unlock; convert MBR → GPT via `mbr2gpt` if switching to UEFI; tune deeper undervolt, `Cores Enabled`, `PL1/PL2` (`200W/250W` default — keep VRM cooled!), `tREFI = 32760`, and manual DDR4-2133 timings right inside BIOS Setup (`F10`).

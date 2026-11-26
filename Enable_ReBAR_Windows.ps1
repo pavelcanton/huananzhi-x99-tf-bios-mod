@@ -166,6 +166,11 @@ if ($readLen -eq 1) {
     Write-Host "[ERROR] Could not read ReBarState (Win32 error $readErr)." -ForegroundColor Red
 }
 
+if ($hadReadError) {
+    Write-Host "        Aborting without modifying UEFI NVRAM." -ForegroundColor Red
+    exit 1
+}
+
 if (-not $Action) {
     Write-Host ""
     Write-Host "Select action:"
@@ -186,7 +191,6 @@ if (-not $Action) {
 }
 
 if ($Action -eq "Status") {
-    if ($hadReadError) { exit 1 }
     exit 0
 }
 
