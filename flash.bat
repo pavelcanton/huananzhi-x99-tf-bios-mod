@@ -18,7 +18,7 @@ set "WORK_DIR_TRIM=%WORK_DIR%"
 if "%WORK_DIR_TRIM:~-1%"=="\" set "WORK_DIR_TRIM=%WORK_DIR_TRIM:~0,-1%"
 
 echo ============================================================================
-echo   HUANANZHI X99-TF (GHX99015) - Modded BIOS v2.1.2 Flasher (Intel FPT)
+echo   HUANANZHI X99-TF (GHX99015) - Modded BIOS v2.2 Flasher (Intel FPT)
 echo ============================================================================
 echo.
 
@@ -38,7 +38,7 @@ if not exist "tools\fptw64.exe" (
 
 :: Safety check #1: Strict SMBIOS board & BIOS check (rejects incompatible X99-TF-Q / X99-TF_Q / X99-TF Q / X99-TF8 / X99-TF GAMING / X99-TF.Q!)
 set "BOARD_CHK="
-for /f "usebackq delims=" %%S in (`call "%PS_EXE%" -NoProfile -InputFormat None -Command "$errs=@(); $bb=$null; $bi=$null; try { $bb=Get-CimInstance Win32_BaseBoard -ErrorAction Stop } catch { $errs += ('BaseBoard: ' + $_.Exception.Message) }; try { $bi=Get-CimInstance Win32_BIOS -ErrorAction Stop } catch { $errs += ('BIOS: ' + $_.Exception.Message) }; $txt=(($bb.Manufacturer+' '+$bb.Product+' '+$bi.SMBIOSBIOSVersion+' '+$bi.Name) -replace '\s+',' ').Trim(); $bad=($txt -match '(?<![A-Za-z0-9])X99-TF(?:[-_/.+][A-Za-z0-9]|[A-Za-z0-9]|\s*\()') -or ($txt -match '(?<![A-Za-z0-9])X99-TF\s+(?:Q|GAMING|PRO|PLUS|V\d)(?![A-Za-z0-9])') -or ($txt -match '(?<![A-Za-z0-9])GAMING(?![A-Za-z0-9])'); $ok=(-not $bad) -and (($txt -match '(?<![A-Za-z0-9])X99-TF(?![A-Za-z0-9_/.+\-(])') -or ($txt -match '(?<![A-Za-z0-9])GHX9901[45](?![A-Za-z0-9])')); $re='[\r\n\x22\x25\x26\x21\x28\x29\x3C\x3E\x5E\x7C]'; if ($ok) { 'OK' } elseif ($txt -and $errs.Count -gt 0) { 'MISMATCH: ' + ($txt -replace $re,'_').Trim() + ' [WMI: ' + (($errs -join '; ') -replace $re,'_').Trim() + ']' } elseif ($txt) { 'MISMATCH: ' + ($txt -replace $re,'_').Trim() } elseif ($errs.Count -gt 0) { 'WMI_ERROR: ' + (($errs -join '; ') -replace $re,'_').Trim() } else { 'UNKNOWN (empty SMBIOS)' }" 2^>nul`) do set "BOARD_CHK=%%S"
+for /f "usebackq delims=" %%S in (`call "%PS_EXE%" -NoProfile -InputFormat None -Command "$errs=@(); $bb=$null; $bi=$null; try { $bb=Get-CimInstance Win32_BaseBoard -ErrorAction Stop } catch { $errs += ('BaseBoard: ' + $_.Exception.Message) }; try { $bi=Get-CimInstance Win32_BIOS -ErrorAction Stop } catch { $errs += ('BIOS: ' + $_.Exception.Message) }; $txt=(($bb.Manufacturer+' '+$bb.Product+' '+$bi.SMBIOSBIOSVersion+' '+$bi.Name) -replace '\s+',' ').Trim(); $bad=($txt -match '(?<![A-Za-z0-9])X99-TF(?:[-_/.+][A-Za-z0-9]|[A-Za-z0-9]|\s*\()') -or ($txt -match '(?<![A-Za-z0-9])X99-TF\s+(?:Q\d*|GAMING|PRO|PLUS|V\d+)(?![A-Za-z0-9])') -or ($txt -match '(?<![A-Za-z0-9])GAMING(?![A-Za-z0-9])'); $ok=(-not $bad) -and (($txt -match '(?<![A-Za-z0-9])X99-TF(?![A-Za-z0-9_/.+\-(])') -or ($txt -match '(?<![A-Za-z0-9])GHX9901[45](?![A-Za-z0-9])')); $re='[\r\n\x22\x25\x26\x21\x28\x29\x3C\x3E\x5E\x7C]'; if ($ok) { 'OK' } elseif ($txt -and $errs.Count -gt 0) { 'MISMATCH: ' + ($txt -replace $re,'_').Trim() + ' [WMI: ' + (($errs -join '; ') -replace $re,'_').Trim() + ']' } elseif ($txt) { 'MISMATCH: ' + ($txt -replace $re,'_').Trim() } elseif ($errs.Count -gt 0) { 'WMI_ERROR: ' + (($errs -join '; ') -replace $re,'_').Trim() } else { 'UNKNOWN (empty SMBIOS)' }" 2^>nul`) do set "BOARD_CHK=%%S"
 if not defined BOARD_CHK set "BOARD_CHK=UNKNOWN (PowerShell/WMI unavailable)"
 setlocal EnableDelayedExpansion
 if "!BOARD_CHK!"=="OK" (
@@ -63,7 +63,7 @@ echo.
 :check_bitlocker
 :: Safety check #2: BitLocker protection check on %SystemDrive% (fails-safe to UNKNOWN, NEVER OFF!)
 set "BL_STATE=UNKNOWN"
-for /f "usebackq delims=" %%L in (`call "%PS_EXE%" -NoProfile -InputFormat None -Command "try { $d=if($env:SYS_DRIVE){$env:SYS_DRIVE}else{'C:'}; $res=$null; if(Get-Command Get-BitLockerVolume -ErrorAction SilentlyContinue){ try { $v=Get-BitLockerVolume -MountPoint $d -ErrorAction Stop; if($null -ne $v){ if($v.ProtectionStatus -eq 'On' -or $v.ProtectionStatus -eq 1){$res='ON'} elseif($v.ProtectionStatus -eq 'Off' -or $v.ProtectionStatus -eq 0){$res='OFF'} else{$res=$null} } } catch { $res=$null } }; if($null -eq $res){ $w=Get-CimInstance -Namespace 'root\CIMV2\Security\MicrosoftVolumeEncryption' -ClassName Win32_EncryptableVolume -Filter ('DriveLetter=' + [char]39 + $d.Replace([char]39,'') + [char]39) -ErrorAction Stop; if($null -ne $w){ if($w.ProtectionStatus -eq 1){$res='ON'} elseif($w.ProtectionStatus -eq 0){$res='OFF'} else{$res='UNKNOWN'} } }; if($res){$res}else{'UNKNOWN'} } catch {'UNKNOWN'}" 2^>nul`) do set "BL_STATE=%%L"
+for /f "usebackq delims=" %%L in (`call "%PS_EXE%" -NoProfile -InputFormat None -Command "try { $d=if($env:SYS_DRIVE){$env:SYS_DRIVE}else{'C:'}; if($d -notmatch '^[A-Za-z]:$'){throw 'invalid drive'}; $res=$null; if(Get-Command Get-BitLockerVolume -ErrorAction SilentlyContinue){ try { $v=Get-BitLockerVolume -MountPoint $d -ErrorAction Stop; if($null -ne $v){ if($v.ProtectionStatus -eq 'On' -or $v.ProtectionStatus -eq 1){$res='ON'} elseif($v.ProtectionStatus -eq 'Off' -or $v.ProtectionStatus -eq 0){$res='OFF'} else{$res=$null} } } catch { $res=$null } }; if($null -eq $res){ $w=Get-CimInstance -Namespace 'root\CIMV2\Security\MicrosoftVolumeEncryption' -ClassName Win32_EncryptableVolume -Filter ('DriveLetter=' + [char]39 + $d + [char]39) -ErrorAction Stop; if($null -ne $w){ if($w.ProtectionStatus -eq 1){$res='ON'} elseif($w.ProtectionStatus -eq 0){$res='OFF'} else{$res='UNKNOWN'} } }; if($res){$res}else{'UNKNOWN'} } catch {'UNKNOWN'}" 2^>nul`) do set "BL_STATE=%%L"
 if not defined BL_STATE set "BL_STATE=UNKNOWN"
 if /I "%BL_STATE%"=="ON" (
     call :safe_echo "[WARN] На системном диске включён BitLocker: " SYS_DRIVE
@@ -77,12 +77,13 @@ if /I "%BL_STATE%"=="ON" (
     echo.
 )
 
-echo Выберите стартовый профиль ^(в v2.1 андервольт, Ring, ядра, ОЗУ и лимиты
+echo Выберите стартовый профиль ^(в v2.2 андервольт, Ring, ядра, ОЗУ, MRRS и лимиты
 echo можно в любой момент менять прямо в меню BIOS с сохранением по F10^):
 echo.
-echo   [1] Safe Stock      - 0/0 mV, динамический Ring, C-States ON, IMC Auto
+echo   [1] Safe Stock      - 0/0 mV, динамический Ring, C-States ON, IMC/MRRS Auto
 echo                         ^(максимальная стабильность; лучший выбор для Xeon v4^)
-echo   [2] Performance OC  - -50/-40 mV, лок Ring на макс., C-States OFF, тюнинг IMC
+echo   [2] Performance OC  - -50/-40 mV, лок Ring на макс., C-States OFF, IMC,
+echo                         MRRS 2048 B, PCH Clock Gating OFF, USB Precondition, MemTest OFF
 echo                         ^(РЕКОМЕНДУЕТСЯ для Xeon E5 v3; ОЗУ и tREFI в Auto;
 echo                          сброс CMOS всегда откатывает профиль в Safe Stock!^)
 echo.

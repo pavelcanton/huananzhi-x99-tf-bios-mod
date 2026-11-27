@@ -1,13 +1,13 @@
-# Huananzhi X99-TF — модифицированный BIOS v2.1.2 (GHX99015, 25.05.2020)
+# Huananzhi X99-TF — модифицированный BIOS v2.2 (GHX99015, 25.05.2020)
 
 **🇷🇺 Русский** | [🇬🇧 English](README.en.md)
 
-Пакет готовых прошивок **v2.1.2** (бинарники BIOS идентичны `v2.1` / `v2.1.1`, усилена безопасность скриптов прошивки/ReBAR и уточнена документация) для **HUANANZHI X99-TF** на базе сборки [Koshak1013](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`GHX99015`, 25.05.2020): анлок Turbo Boost для Xeon E5 v3, **живой андервольт и лок Ring/Uncore прямо в меню BIOS с реальным сохранением по `F10`**, 25 разблокированных подменю, расшитые лимиты питания, ReBAR, чистый Secure Boot **2011 + 2023 без уязвимости `PKfail` + 443 отзыва `dbx`**, TPM 2.0, работающий `Intel VT-x` и исправленный SmartFan V3 (с поддержкой S3-сна).
+Пакет готовых прошивок **v2.2** для **HUANANZHI X99-TF** на базе сборки [Koshak1013](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`GHX99015`, 25.05.2020): анлок Turbo Boost для Xeon E5 v3, **живой андервольт и лок Ring/Uncore прямо в меню BIOS с реальным сохранением по `F10`**, 25 разблокированных подменю + открытый **`Maximum Read Request`**, оптимизации `02_Performance_OC` из живой обкатки **`V4.6`** (`MRRS = 2048 B`, `PCH PCIE Clock Gating = Disable`, `USB Precondition = Enable`, `MemTest = Disable`, безопасный `ECC Demand Scrub = Enable`), расшитые лимиты питания, ReBAR, чистый Secure Boot **2011 + 2023 без уязвимости `PKfail` + 443 отзыва `dbx`**, TPM 2.0, работающий `Intel VT-x` и исправленный SmartFan V3 (с поддержкой S3-сна).
 
-Вместо 4 жёстких тиров андервольта из v1.1 теперь достаточно **2 профилей × 3 режима = 6 сборок** — все параметры разгона и тайминги ОЗУ можно настраивать в моменте в BIOS Setup, а сброс CMOS гарантированно возвращает безопасный `Safe Stock`.
+Вместо 4 жёстких тиров андервольта из v1.1 теперь достаточно **2 профилей × 3 режима = 6 сборок** — все параметры разгона, MRRS и тайминги ОЗУ можно настраивать в моменте в BIOS Setup, а сброс CMOS гарантированно возвращает безопасный `Safe Stock`.
 
 > [!TIP]
-> **Скачать всё одним архивом:** [страница Releases](../../releases/latest) → файл `X99TF_GHX99015_BIOS_Pack_v2.1.2.zip`. Или берите отдельные файлы прямо из папок ниже.
+> **Скачать всё одним архивом:** [страница Releases](../../releases/latest) → файл `X99TF_GHX99015_BIOS_Pack_v2.2.zip`. Или берите отдельные файлы прямо из папок ниже.
 
 > [!CAUTION]
 > **Только для HUANANZHI X99-TF (`GHX99014` / `GHX99015`).** Не шейте на другие платы X99 (Machinist, Kllisre, Qiyida, Jingsha, другие модели Huananzhi и т.д.): у них другие Flash Descriptor, разводка памяти, Super I/O, GPIO и линии PCIe — высокий риск «кирпича» с восстановлением только программатором.
@@ -16,10 +16,21 @@
 
 ---
 
-## Что нового в v2.0 / v2.1 / v2.1.1 / v2.1.2
+## Что нового в v2.2 (и история v2.0 / v2.1 / v2.1.2)
 
 > [!IMPORTANT]
-> **Обслуживающий релиз v2.1.2 (все 12 образов BIOS байт-в-байт идентичны `v2.1` и `v2.1.1` — перепрошиваться с `v2.1`/`v2.1.1` не нужно):**
+> **Релиз v2.2 — проверенные на живом железе оптимизации PCIe/C612/POST + открытое меню `Maximum Read Request`:**
+> * **Открыт пункт `Maximum Read Request` в BIOS Setup** (`Advanced → PCI Subsystem Settings → PCI Express Settings`): позволяет менять PCIe MRRS (`Auto` / `512 B` / `2048 B` и т.д.) прямо в меню BIOS с сохранением по `F10`.
+> * **5 новых проверенных оптимизаций в профиле `02_Performance_OC`** (`01_Safe_Stock` и фабричные `StdDefaults` для Clear CMOS сохраняют консервативные настройки):
+>   1. **`Maximum Read Request = 2048 B`** (`Setup[0x0046] = 0x04`; в `Safe Stock` / Clear CMOS = `Auto / 512 B`) — ускоряет крупные DMA-чтения на GPU (RTX 5070 Ti), NVMe и GbE без единого события WHEA.
+>   2. **`PCH PCIE Clock Gating = Disable`** (`IntelSetup[0x01B4] = 0`) — убирает задержку пробуждения тактирования линий PCIe чипсета C612 (PCH M.2 NVMe и сетевой контроллер).
+>   3. **`USB Precondition = Enable`** (`IntelSetup[0x0129] = 1`) — ускоряет инициализацию xHCI USB 3.0 на старте POST.
+>   4. **`MemTest = Disable`** (`IntelSetup[0x11EF] = 0`) — ускоряет холодный старт POST, **полностью сохраняя** полноценную инициализацию памяти `MemInit` и 72-бит ECC (`MRC Fast Boot` остаётся выключен).
+>   5. **`Demand Scrub = Enable`** (`IntelSetup[0x11C5] = 1`, при выключенном `Patrol Scrub = 0`) — в `UncoreInitPeim` аппаратно маскируется флагом наличия ECC: **0% нагрузки на обычной не-ECC ОЗУ** и защита от накопления однобитных ошибок на ECC RDIMM без фонового трафика памяти.
+> * **Усиленные скрипты:** `flash.bat` обновлён до `v2.2` (усилены SMBIOS-фильтр `Q\d*`/`V\d+` и проверка буквы системного диска для BitLocker); в `Enable_ReBAR_Windows.ps1` добавлен `Set-StrictMode -Version Latest` и убран пустой `catch`.
+> * **Новый одноразовый Community PK для v2.2:** 2048-бит RSA `HUANANZHI X99-TF Community Platform Key`, приватный ключ перезаписан нулями и уничтожен сразу после подписи (см. SHA-256 ниже).
+>
+> **Обслуживающий релиз v2.1.2 (все 12 образов BIOS байт-в-байт идентичны `v2.1` и `v2.1.1`):**
 > * **`Enable_ReBAR_Windows.bat` (безопасность):** полностью убраны инъекции аргументов (`set "_ARG1=%~1"` и проброс сырого `%*`); лаунчер безопасно читает аргументы и передаёт в PowerShell только строго разрешённый список (`-Action Enable|Disable|Status`), корректно завершаясь без `pause` при любых CLI-аргументах.
 > * **`Enable_ReBAR_Windows.ps1`:** при неожиданной ошибке чтения UEFI-переменной `ReBarState` (кроме кодов `122`/`203`) скрипт немедленно завершается (`exit 1`) без попытки записи в NVRAM.
 > * **`flash.bat`:** исправлена регулярка проверки `SHA256SUMS.txt` под `call` (`\A...\z` без символа `^`), усилена проверка SMBIOS-имени платы и синхронизирована финальная подсказка про 10-секундный холодный старт.
@@ -57,7 +68,7 @@
 | Папка | Что активно сразу после прошивки | Для кого |
 | :--- | :--- | :--- |
 | **`01_Safe_Stock`** | Анлок Turbo Boost, `0 / 0 mV`, динамический Ring (`CLR = 0`), **`C1E / C2 / C3 = ON, C6 = OFF`**, контроллер памяти и ОЗУ в `Auto`, все ядра активны | Максимальная стабильность «из коробки», **лучший выбор для Xeon E5 v4** или если хотите крутить всё вручную с нуля |
-| **`02_Performance_OC`** | Анлок Turbo Boost, универсальный безопасный андервольт **`−50 mV Core / −40 mV Ring`**, **лок Ring на максимум CPU** (`CLR = 30`, авто-ограничение под модель v3), C-States OFF (`C0/C1`, `C1E/C3/C6` выкл.), безопасный тюнинг IMC (`Early Snoop`, `Open Page`, `Turnaround Opt`, `CKE/OppSR/MDLL Off/Set Throttling Mode/Scrub/SATA+sSATA AHCI ALPM/LPM` выкл., `MC0/MC1 PKGC CLK GATE DISABLE`), **ОЗУ и `tREFI` в `Auto`**, все ядра активны | **Рекомендуется для большинства Xeon E5 v3.** Мгновенный прирост отзывчивости и снижение задержек на любой памяти DDR4; сброс CMOS всегда вернёт `Safe Stock` |
+| **`02_Performance_OC`** | Анлок Turbo Boost, универсальный безопасный андервольт **`−50 mV Core / −40 mV Ring`**, **лок Ring на максимум CPU** (`CLR = 30`, авто-ограничение под модель v3), C-States OFF (`C0/C1`, `C1E/C3/C6` выкл.), **`MRRS = 2048 B`**, **`PCH PCIE Clock Gating = Disable`**, **`USB Precondition = Enable`**, **`MemTest = Disable`** (с сохранением ECC `MemInit`), безопасный тюнинг IMC (`Early Snoop`, `Open Page`, `Turnaround Opt`, `CKE/OppSR/MDLL Off/Set Throttling Mode/Patrol Scrub/SATA+sSATA AHCI ALPM/LPM` выкл., **`Demand Scrub = Enable`**, `MC0/MC1 PKGC CLK GATE DISABLE`), **ОЗУ и `tREFI` в `Auto`**, все ядра активны | **Рекомендуется для большинства Xeon E5 v3.** Мгновенный прирост отзывчивости, быстрый POST и снижение задержек на любой памяти DDR4; сброс CMOS всегда вернёт `Safe Stock` |
 
 > [!NOTE]
 > Оба профиля собраны на **идентичном** коде BIOS (`FV0` / `FV1` / `StdDefaults` совпадают байт-в-байт). В любой момент вы можете перенастроить андервольт, Ring, ядра, C-States или тайминги ОЗУ прямо в BIOS Setup без перепрошивки.
@@ -168,7 +179,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 | **Режим снупинга (L3 / IMC)** | `IntelRCSetup → QPI Configuration → QPI General Configuration` | `COD Enable = Disable`, **`Early Snoop = Enable`** (ускоряет доступ к памяти на многоядерных Xeon; в `02_Performance_OC` уже включено). |
 | **Частота, тайминги и `tREFI` ОЗУ** | `IntelRCSetup → Memory Configuration → Memory Frequency` и `Memory Timings & Voltage Override` | Потолок DDR4 на Xeon E5 v3 — **2133 МГц** (`2133` или `Auto`; на Xeon E5 v4 поддерживается до **2400 МГц**). Для ручной настройки поставьте `DIMM profile = MANUAL`: откроются тайминги, `Command Timing` (`1N`/`2N`), `Memory Voltage` *(NO-OP на X99-TF, см. ниже)* и **`Refresh Rate`** (`tREFI`). Увеличение `Refresh Rate` до **`32760`** (при хорошем обдуве модулей) заметно снижает задержку ОЗУ. **Внимание:** в `MANUAL` предзаполнены все 10 жёстких таймингов под чипы **Micron** (`tCL=12, tRP=12, tRCD=12, tRAS=28, tWR=12, tRFC=200, tRRD=4, tRTP=6, tFAW=16, tCWL=11`) — на планках Hynix / обычной DDR4 выставите ненужные в `0` (`Auto`) или ослабьте до сохранения `F10` и проверяйте в TestMem5! |
 | **Ускорение контроллера памяти (IMC)** | `IntelRCSetup → Memory Configuration` | `Page Policy → Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal` → **`Set Throttling Mode = Disabled`**, **`MDLL Off = Disabled`**, `Memory Power Savings Mode = User Defined` → **`Memory Power Savings Advanced Options`** (`CKE Throttling = Off`, `Opportunistic SR = Disabled`); `Memory RAS Configuration` → `Patrol/Demand Scrub = Disable`. Также в `02_Performance_OC` отключены **`SATA/sSATA AHCI ALPM`** и **`LPM`**, и задан **`MC0/MC1 PKGC CLK GATE DISABLE`** (`значение 1 = Disable в BIOS`, путь `CPU - Advanced PM Tuning → Program CSR_SAPMCTL`). |
-| **PCIe / Above 4G** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` для UEFI/ReBAR), `PCI Express Settings`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`. |
+| **PCIe / Above 4G / MRRS** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` для UEFI/ReBAR), `PCI Express Settings`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`, **`Maximum Read Request`** (`2048 Bytes` в `02_Performance_OC`, `Auto` в `01_Safe_Stock` — в v2.2 открыт для ручной правки!). |
 | **Защита от перегрева (PROCHOT#)** | `IntelRCSetup → Advanced Power Management Configuration → CPU Thermal Management` | Держите `Bi-directional PROCHOT# = Bidirectional (normal input response)` (защита VRM). |
 | **Кривая вентилятора CPU** | `Advanced → Hardware Monitor` | Точки `T1–T5`, `PWM1–PWM4`. В v2.1+ `T5` (`78°C`) корректно задаёт порог 100% оборотов и переживает сон S3. |
 
@@ -237,7 +248,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
   Get-FileHash .\02_Performance_OC\3_UEFI_SB_TPM\*.bin -Algorithm SHA256
   ```
 * Отпечаток публичного сертификата **`HUANANZHI X99-TF Community Platform Key`** (`PK`, `2026–2056`):
-  * SHA-256 (DER): `6b61f6bcc8a80e71098442fab01c1ec598ccc45393ab64eb0a7637363f7b8522`
+  * SHA-256 (DER): `81f6aabeff66a36f18c300602b3559f6827c5957c2b747dc1b97bcc4522c8036`
   * Приватный ключ сгенерирован одноразово при сборке релиза и **безвозвратно перезаписан нулями и удалён** сразу после подписи `PKDefault` — он не хранится ни в репозитории, ни у автора (полная защита от `PKfail`).
 
 ---

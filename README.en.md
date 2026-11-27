@@ -1,13 +1,13 @@
-# Huananzhi X99-TF — Modded BIOS Pack v2.1.2 (GHX99015, 2020-05-25)
+# Huananzhi X99-TF — Modded BIOS Pack v2.2 (GHX99015, 2020-05-25)
 
 [🇷🇺 Русский](README.md) | **🇬🇧 English**
 
-Ready-to-flash **v2.1.2** firmware pack (all 12 BIOS binaries are byte-for-byte identical to `v2.1` / `v2.1.1`; hardened flash/ReBAR scripts and updated documentation) for **HUANANZHI X99-TF** based on [Koshak1013](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`GHX99015`, 2020-05-25): Xeon E5 v3 Turbo Boost Unlock, **live undervolting and Ring/Uncore frequency lock directly in BIOS Setup with real `F10` NVRAM persistence**, 25 unlocked submenus, unlocked power limits, Resizable BAR, clean **2011 + 2023 Secure Boot free of `PKfail` + 443 `dbx` revocations**, TPM 2.0, working `Intel VT-x`, and fixed SmartFan V3 (with S3 sleep support).
+Ready-to-flash **v2.2** firmware pack for **HUANANZHI X99-TF** based on [Koshak1013](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`GHX99015`, 2020-05-25): Xeon E5 v3 Turbo Boost Unlock, **live undervolting and Ring/Uncore frequency lock directly in BIOS Setup with real `F10` NVRAM persistence**, 25 unlocked submenus + unhidden **`Maximum Read Request`**, live-proven **`V4.6`** optimizations in `02_Performance_OC` (`MRRS = 2048 B`, `PCH PCIE Clock Gating = Disable`, `USB Precondition = Enable`, `MemTest = Disable`, ECC-safe `Demand Scrub = Enable`), unlocked power limits, Resizable BAR, clean **2011 + 2023 Secure Boot free of `PKfail` + 443 `dbx` revocations**, TPM 2.0, working `Intel VT-x`, and fixed SmartFan V3 (with S3 sleep support).
 
-Instead of the 4 hardcoded undervolt tiers from v1.1, this pack uses a clean **2 profiles × 3 boot modes = 6 builds** matrix — you can tune voltages, Ring lock, cores, C-States, and RAM timings live inside BIOS Setup, and Clear CMOS always rolls back safely to `Safe Stock`.
+Instead of the 4 hardcoded undervolt tiers from v1.1, this pack uses a clean **2 profiles × 3 boot modes = 6 builds** matrix — you can tune voltages, Ring lock, cores, C-States, MRRS, and RAM timings live inside BIOS Setup, and Clear CMOS always rolls back safely to `Safe Stock`.
 
 > [!TIP]
-> **Download everything as one archive:** [Releases page](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v2.1.2.zip`. Or grab individual files directly from the folders below.
+> **Download everything as one archive:** [Releases page](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v2.2.zip`. Or grab individual files directly from the folders below.
 
 > [!CAUTION]
 > **For HUANANZHI X99-TF (`GHX99014` / `GHX99015`) ONLY.** Do not flash onto any other X99 motherboard (Machinist, Kllisre, Qiyida, Jingsha, other Huananzhi models, etc.): their Flash Descriptor, memory routing, Super I/O, GPIO, and PCIe lanes differ — high risk of bricking requiring an external SPI programmer.
@@ -16,10 +16,21 @@ Instead of the 4 hardcoded undervolt tiers from v1.1, this pack uses a clean **2
 
 ---
 
-## What's New in v2.0 / v2.1 / v2.1.1 / v2.1.2
+## What's New in v2.2 (and v2.0 / v2.1 / v2.1.2 History)
 
 > [!IMPORTANT]
-> **Maintenance release v2.1.2 (all 12 BIOS `.bin` images are byte-for-byte identical to `v2.1` and `v2.1.1` — no reflashing needed from `v2.1`/`v2.1.1`):**
+> **Release v2.2 — Live-Verified PCIe/C612/POST Optimizations + Unhidden `Maximum Read Request` Menu:**
+> * **Unhidden `Maximum Read Request` in BIOS Setup** (`Advanced → PCI Subsystem Settings → PCI Express Settings`): tune PCIe MRRS (`Auto` / `512 B` / `2048 B`, etc.) live in Setup with `F10` persistence.
+> * **5 live-verified optimizations cherry-picked into `02_Performance_OC`** (`01_Safe_Stock` and Clear CMOS `StdDefaults` stay conservative):
+>   1. **`Maximum Read Request = 2048 B`** (`Setup[0x0046] = 0x04`; `Auto / 512 B` in `Safe Stock` / Clear CMOS) — accelerates large PCIe DMA reads on GPUs (RTX 5070 Ti), NVMe SSDs, and GbE with zero WHEA errors.
+>   2. **`PCH PCIE Clock Gating = Disable`** (`IntelSetup[0x01B4] = 0`) — eliminates C612 chipset root-port clock-wake latency for PCH M.2 NVMe and onboard LAN.
+>   3. **`USB Precondition = Enable`** (`IntelSetup[0x0129] = 1`) — overlaps xHCI USB 3.0 initialization during POST for faster cold boots.
+>   4. **`MemTest = Disable`** (`IntelSetup[0x11EF] = 0`) — cuts redundant cold-boot pattern test while **fully preserving** CPGC `MemInit` and 72-bit ECC initialization (`MRC Fast Boot` stays disabled).
+>   5. **`Demand Scrub = Enable`** (`IntelSetup[0x11C5] = 1`, while `Patrol Scrub = 0`) — hardware-masked by ECC capability inside `UncoreInitPeim`: **0% overhead on non-ECC UDIMMs** and free single-bit error correction on ECC RDIMMs with zero background bandwidth penalty.
+> * **Hardened scripts:** `flash.bat` updated for `v2.2` (stricter SMBIOS filter `Q\d*`/`V\d+` and `^[A-Za-z]:$` BitLocker drive validation); `Enable_ReBAR_Windows.ps1` adds `Set-StrictMode -Version Latest` and eliminates empty `catch`.
+> * **Fresh ephemeral v2.2 Community PK:** 2048-bit RSA `HUANANZHI X99-TF Community Platform Key`, private key zero-overwritten and shredded immediately after signing (see DER SHA-256 below).
+>
+> **Maintenance release v2.1.2 (all 12 BIOS `.bin` images byte-for-byte identical to `v2.1` and `v2.1.1`):**
 > * **`Enable_ReBAR_Windows.bat` (security):** eliminates command/quote injection from `set "_ARG1=%~1"` and raw `%*` forwarding; safely reads CLI arguments and forwards only strictly allowlisted `-Action Enable|Disable|Status` flags to PowerShell, exiting cleanly without `pause` on any CLI arguments.
 > * **`Enable_ReBAR_Windows.ps1`:** immediately aborts (`exit 1`) on unexpected `ReBarState` UEFI variable read errors (any Win32 code other than `122`/`203`) without attempting NVRAM writes.
 > * **`flash.bat`:** replaces `^`/`$` with `\A...\z` inside `call` SHA-256 verification regex, tightens SMBIOS board matching, and aligns post-flash instructions with the 10-second cold shutdown.
@@ -57,7 +68,7 @@ Folder layout: **`<profile>/<mode>/`**, each containing two binaries:
 | Folder | Active Right After Flashing | Best For |
 | :--- | :--- | :--- |
 | **`01_Safe_Stock`** | Turbo Boost Unlock, `0 / 0 mV`, dynamic Ring (`CLR = 0`), **`C1E / C2 / C3 = ON, C6 = OFF`**, IMC and RAM on `Auto`, all cores enabled | Maximum out-of-the-box stability, **best choice for Xeon E5 v4** or tuning everything manually from scratch |
-| **`02_Performance_OC`** | Turbo Boost Unlock, universal safe undervolt **`−50 mV Core / −40 mV Ring`**, **auto-clamped max Ring lock** (`CLR = 30` on v3), C-States OFF (`C0/C1`, `C1E/C3/C6` disabled), safe IMC tuning (`Early Snoop`, `Open Page`, `Turnaround Opt`, `CKE/OppSR/MDLL Off/Set Throttling Mode/Scrub/SATA+sSATA AHCI ALPM/LPM` off, `MC0/MC1 PKGC CLK GATE DISABLE`), **RAM & `tREFI` on `Auto`**, all cores enabled | **Recommended for most Xeon E5 v3 CPUs.** Immediate responsiveness and lower latency on any DDR4 kit; Clear CMOS always reverts to `Safe Stock` |
+| **`02_Performance_OC`** | Turbo Boost Unlock, universal safe undervolt **`−50 mV Core / −40 mV Ring`**, **auto-clamped max Ring lock** (`CLR = 30` on v3), C-States OFF (`C0/C1`, `C1E/C3/C6` disabled), **`MRRS = 2048 B`**, **`PCH PCIE Clock Gating = Disable`**, **`USB Precondition = Enable`**, **`MemTest = Disable`** (preserving ECC `MemInit`), safe IMC tuning (`Early Snoop`, `Open Page`, `Turnaround Opt`, `CKE/OppSR/MDLL Off/Set Throttling Mode/Patrol Scrub/SATA+sSATA AHCI ALPM/LPM` off, **`Demand Scrub = Enable`**, `MC0/MC1 PKGC CLK GATE DISABLE`), **RAM & `tREFI` on `Auto`**, all cores enabled | **Recommended for most Xeon E5 v3 CPUs.** Faster POST, immediate responsiveness, and lower latency on any DDR4 kit; Clear CMOS always reverts to `Safe Stock` |
 
 > [!NOTE]
 > Both profiles share **byte-for-byte identical** BIOS code (`FV0` / `FV1` / `StdDefaults`). You can change undervolt, Ring lock, cores, C-States, or RAM timings anytime inside BIOS Setup without reflashing.
@@ -168,7 +179,7 @@ In **v2.1+**, all key menus are unlocked, `Power Technology = Custom` is safely 
 | **Snoop Mode (L3 / IMC)** | `IntelRCSetup → QPI Configuration → QPI General Configuration` | `COD Enable = Disable`, **`Early Snoop = Enable`** (cuts memory latency on multi-core single-socket Xeons; pre-set in `02_Performance_OC`). |
 | **RAM Frequency, Timings & `tREFI`** | `IntelRCSetup → Memory Configuration → Memory Frequency` and `Memory Timings & Voltage Override` | Haswell-EP (Xeon E5 v3) DDR4 hardware cap is **2133 MHz** (`2133` or `Auto`; Xeon E5 v4 supports up to **2400 MHz**). Set `DIMM profile = MANUAL` to unlock timings, `Command Timing` (`1N`/`2N`), `Memory Voltage` *(NO-OP on X99-TF, see below)*, and **`Refresh Rate`** (`tREFI`). Raising `Refresh Rate` to **`32760`** (with decent airflow) noticeably cuts RAM latency. **Caution:** `MANUAL` pre-fills all 10 tight **Micron** timings (`tCL=12, tRP=12, tRCD=12, tRAS=28, tWR=12, tRFC=200, tRRD=4, tRTP=6, tFAW=16, tCWL=11`) — on Hynix / regular DDR4 kits, reset unwanted fields to `0` (`Auto`) or loosen them before pressing `F10`, and validate with TestMem5! |
 | **Memory Controller (IMC) Tuning** | `IntelRCSetup → Memory Configuration` | `Page Policy → Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal` → **`Set Throttling Mode = Disabled`**, **`MDLL Off = Disabled`**, `Memory Power Savings Mode = User Defined` → **`Memory Power Savings Advanced Options`** (`CKE Throttling = Off`, `Opportunistic SR = Disabled`); `Memory RAS Configuration` → `Patrol/Demand Scrub = Disable`. `02_Performance_OC` also disables **`SATA/sSATA AHCI ALPM`** and **`LPM`**, and sets **`MC0/MC1 PKGC CLK GATE DISABLE`** (`value 1 = Disable in BIOS`, path `CPU - Advanced PM Tuning → Program CSR_SAPMCTL`). |
-| **PCIe / Above 4G** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` for UEFI/ReBAR), `PCI Express Settings`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`. |
+| **PCIe / Above 4G / MRRS** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` for UEFI/ReBAR), `PCI Express Settings`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`, **`Maximum Read Request`** (`2048 Bytes` in `02_Performance_OC`, `Auto` in `01_Safe_Stock` — unhidden in v2.2 for live tuning!). |
 | **Thermal Protection (PROCHOT#)** | `IntelRCSetup → Advanced Power Management Configuration → CPU Thermal Management` | Keep `Bi-directional PROCHOT# = Bidirectional (normal input response)` (protects VRM). |
 | **CPU Fan Curve** | `Advanced → Hardware Monitor` | Points `T1–T5`, `PWM1–PWM4`. In v2.1+, `T5` (`78°C`) properly sets the 100% threshold and survives S3 sleep. |
 
@@ -237,7 +248,7 @@ Test rig: **Xeon E5-2696 v3 (`12C/24T`, `−65 / −45 mV`, Ring `3000 MHz` lock
   Get-FileHash .\02_Performance_OC\3_UEFI_SB_TPM\*.bin -Algorithm SHA256
   ```
 * Public certificate fingerprint for **`HUANANZHI X99-TF Community Platform Key`** (`PK`, `2026–2056`):
-  * SHA-256 (DER): `6b61f6bcc8a80e71098442fab01c1ec598ccc45393ab64eb0a7637363f7b8522`
+  * SHA-256 (DER): `81f6aabeff66a36f18c300602b3559f6827c5957c2b747dc1b97bcc4522c8036`
   * The private key was generated ephemerally during release build and **permanently zero-overwritten and shredded** immediately after signing `PKDefault` — it is not stored in this repository or by the author (complete protection against `PKfail`).
 
 ---

@@ -4,6 +4,7 @@ param(
     [string]$Action = ""
 )
 
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
 if (-not ('UefiVarReBar' -as [type])) {
@@ -113,6 +114,7 @@ try {
     }
 } catch {
     # Fallback for older Windows builds without kernel32!GetFirmwareType
+    $null = $_.Exception.Message
 }
 if ($fwMode -eq "Unknown" -and $env:firmware_type) {
     if ($env:firmware_type -eq "UEFI") { $fwMode = "UEFI" }
