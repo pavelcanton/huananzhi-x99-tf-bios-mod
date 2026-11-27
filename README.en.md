@@ -178,7 +178,7 @@ In **v2.1+**, all key menus are unlocked, `Power Technology = Custom` is safely 
 | **C-States / Wakeup Latency** | `IntelRCSetup → Advanced Power Management Configuration → CPU C State Control` | For lowest latency and undervolt stability: `Package C State limit = C0/C1`, `C3 = Disable`, `C6 = Disable`, **`Enhanced Halt State (C1E) = Disable`** (pre-set in `02_Performance_OC`). `Package C State limit` options: `C0/C1`, `C2`, `C6(non Retention)`, `C6(Retention)` (no `Auto`; `01_Safe_Stock` uses `C2`, `C1E/C3 = Enable`, `C6 = Disable`). |
 | **Snoop Mode (L3 / IMC)** | `IntelRCSetup → QPI Configuration → QPI General Configuration` | `COD Enable = Disable`, **`Early Snoop = Enable`** (cuts memory latency on multi-core single-socket Xeons; pre-set in `02_Performance_OC`). |
 | **RAM Frequency, Timings & `tREFI`** | `IntelRCSetup → Memory Configuration → Memory Frequency` and `Memory Timings & Voltage Override` | Haswell-EP (Xeon E5 v3) DDR4 hardware cap is **2133 MHz** (`2133` or `Auto`; Xeon E5 v4 supports up to **2400 MHz**). Set `DIMM profile = MANUAL` to unlock timings, `Command Timing` (`1N`/`2N`), `Memory Voltage` *(NO-OP on X99-TF, see below)*, and **`Refresh Rate`** (`tREFI`). Raising `Refresh Rate` to **`32760`** (with decent airflow) noticeably cuts RAM latency. **Caution:** `MANUAL` pre-fills all 10 tight **Micron** timings (`tCL=12, tRP=12, tRCD=12, tRAS=28, tWR=12, tRFC=200, tRRD=4, tRTP=6, tFAW=16, tCWL=11`) — on Hynix / regular DDR4 kits, reset unwanted fields to `0` (`Auto`) or loosen them before pressing `F10`, and validate with TestMem5! |
-| **Memory Controller (IMC) Tuning** | `IntelRCSetup → Memory Configuration` | `Page Policy → Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal` → **`Set Throttling Mode = Disabled`**, **`MDLL Off = Disabled`**, `Memory Power Savings Mode = User Defined` → **`Memory Power Savings Advanced Options`** (`CKE Throttling = Off`, `Opportunistic SR = Disabled`); `Memory RAS Configuration` → `Patrol/Demand Scrub = Disable`. `02_Performance_OC` also disables **`SATA/sSATA AHCI ALPM`** and **`LPM`**, and sets **`MC0/MC1 PKGC CLK GATE DISABLE`** (`value 1 = Disable in BIOS`, path `CPU - Advanced PM Tuning → Program CSR_SAPMCTL`). |
+| **Memory Controller (IMC) Tuning** | `IntelRCSetup → Memory Configuration` | `Page Policy → Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal` → **`Set Throttling Mode = Disabled`**, **`MDLL Off = Disabled`**, `Memory Power Savings Mode = User Defined` → **`Memory Power Savings Advanced Options`** (`CKE Throttling = Off`, `Opportunistic SR = Disabled`); `Memory RAS Configuration` → `Patrol Scrub = Disable`, **`Demand Scrub = Enable`** (in `02_Performance_OC`; hardware-masked by ECC capability — `0%` overhead on non-ECC UDIMMs). `02_Performance_OC` also disables **`SATA/sSATA AHCI ALPM`** and **`LPM`**, and sets **`MC0/MC1 PKGC CLK GATE DISABLE`** (`value 1 = Disable in BIOS`, path `CPU - Advanced PM Tuning → Program CSR_SAPMCTL`). |
 | **PCIe / Above 4G / MRRS** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` for UEFI/ReBAR), `PCI Express Settings`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`, **`Maximum Read Request`** (`2048 Bytes` in `02_Performance_OC`, `Auto` in `01_Safe_Stock` — unhidden in v2.2 for live tuning!). |
 | **Thermal Protection (PROCHOT#)** | `IntelRCSetup → Advanced Power Management Configuration → CPU Thermal Management` | Keep `Bi-directional PROCHOT# = Bidirectional (normal input response)` (protects VRM). |
 | **CPU Fan Curve** | `Advanced → Hardware Monitor` | Points `T1–T5`, `PWM1–PWM4`. In v2.1+, `T5` (`78°C`) properly sets the 100% threshold and survives S3 sleep. |
@@ -238,6 +238,25 @@ Test rig: **Xeon E5-2696 v3 (`12C/24T`, `−65 / −45 mV`, Ring `3000 MHz` lock
 | BSODs / freezes on `02_Performance_OC` (Xeon E5 v3) | CPU silicon cannot hold `−50 / −40 mV` or max Ring lock | Enter `IntelRCSetup → OverClocking Feature` and relax offsets (e.g., `−30 / −20 mV` or `0 / 0`) or set `CLR Max OC Ratio = 0` → `F10`. No reflashing required! |
 | Black screen on an older GPU in UEFI mode | GPU lacks UEFI GOP (`CsmDxe` unconditionally blocks CSM under Secure Boot, so CSM cannot be toggled in `2_UEFI_SB`/`3_UEFI_SB_TPM`) | Flash **`1_Legacy`** (temporarily using a GOP-capable GPU from Windows, or via CH341A programmer) |
 | Bootable USB (Ventoy, Linux, WinPE) shows `Security Violation` | Third-party `.efi` is not signed by Microsoft keys | For `shim`-based loaders (e.g., Ventoy with Secure Boot Support or Linux), choose `Enroll hash from disk` / `Enroll key from disk` in `MokManager`; for unsigned standalone `.efi` tools without `shim`, use `1_Legacy` |
+
+---
+
+## Independent v2.2 Verification
+
+All **6 builds / 12 binary images** in `v2.2` passed the 9-stage independent offline verifier (`Capstone` + strict `IFR` parser + OpenSSL `CMS` + `NVRAM` / `FV0` / `FV1` / `_FIT_` integrity) and an independent C++ **`UEFITool NE alpha 76`** audit (`UEFIExtract` + `UEFIFind`: **0/24** `PKfail` hits, **0/6** `dbtDefault`, **3/3** `StdDefaults`, **3/3** Intel microcodes).
+
+![v2.2 Verification Scorecard](docs/v22_scorecard.png)
+
+<details>
+<summary><b>Detailed Verification Captures (9/9 Verifier + C++ UEFITool NE A76)</b></summary>
+
+#### 1. Independent 9-Point Release Verifier (All 12 Binaries — 9/9 PASS)
+![v2.2 Release Verifier 9/9 PASS](docs/v22_verifier_9of9.png)
+
+#### 2. Independent C++ UEFITool NE alpha 76 Audit (`UEFIExtract` + `UEFIFind`)
+![v2.2 UEFITool NE alpha 76 Audit](docs/v22_uefitool_ne_audit.png)
+
+</details>
 
 ---
 

@@ -178,7 +178,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 | **C-States / задержка пробуждения** | `IntelRCSetup → Advanced Power Management Configuration → CPU C State Control` | Для минимальных задержек и стабильного андервольта: `Package C State limit = C0/C1`, `C3 = Disable`, `C6 = Disable`, **`Enhanced Halt State (C1E) = Disable`** (в `02_Performance_OC` уже настроено). Варианты `Package C State limit`: `C0/C1`, `C2`, `C6(non Retention)`, `C6(Retention)` (пункта `Auto` нет; в `01_Safe_Stock` заданы `C2`, `C1E/C3 = Enable`, `C6 = Disable`). |
 | **Режим снупинга (L3 / IMC)** | `IntelRCSetup → QPI Configuration → QPI General Configuration` | `COD Enable = Disable`, **`Early Snoop = Enable`** (ускоряет доступ к памяти на многоядерных Xeon; в `02_Performance_OC` уже включено). |
 | **Частота, тайминги и `tREFI` ОЗУ** | `IntelRCSetup → Memory Configuration → Memory Frequency` и `Memory Timings & Voltage Override` | Потолок DDR4 на Xeon E5 v3 — **2133 МГц** (`2133` или `Auto`; на Xeon E5 v4 поддерживается до **2400 МГц**). Для ручной настройки поставьте `DIMM profile = MANUAL`: откроются тайминги, `Command Timing` (`1N`/`2N`), `Memory Voltage` *(NO-OP на X99-TF, см. ниже)* и **`Refresh Rate`** (`tREFI`). Увеличение `Refresh Rate` до **`32760`** (при хорошем обдуве модулей) заметно снижает задержку ОЗУ. **Внимание:** в `MANUAL` предзаполнены все 10 жёстких таймингов под чипы **Micron** (`tCL=12, tRP=12, tRCD=12, tRAS=28, tWR=12, tRFC=200, tRRD=4, tRTP=6, tFAW=16, tCWL=11`) — на планках Hynix / обычной DDR4 выставите ненужные в `0` (`Auto`) или ослабьте до сохранения `F10` и проверяйте в TestMem5! |
-| **Ускорение контроллера памяти (IMC)** | `IntelRCSetup → Memory Configuration` | `Page Policy → Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal` → **`Set Throttling Mode = Disabled`**, **`MDLL Off = Disabled`**, `Memory Power Savings Mode = User Defined` → **`Memory Power Savings Advanced Options`** (`CKE Throttling = Off`, `Opportunistic SR = Disabled`); `Memory RAS Configuration` → `Patrol/Demand Scrub = Disable`. Также в `02_Performance_OC` отключены **`SATA/sSATA AHCI ALPM`** и **`LPM`**, и задан **`MC0/MC1 PKGC CLK GATE DISABLE`** (`значение 1 = Disable в BIOS`, путь `CPU - Advanced PM Tuning → Program CSR_SAPMCTL`). |
+| **Ускорение контроллера памяти (IMC)** | `IntelRCSetup → Memory Configuration` | `Page Policy → Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal` → **`Set Throttling Mode = Disabled`**, **`MDLL Off = Disabled`**, `Memory Power Savings Mode = User Defined` → **`Memory Power Savings Advanced Options`** (`CKE Throttling = Off`, `Opportunistic SR = Disabled`); `Memory RAS Configuration` → `Patrol Scrub = Disable`, **`Demand Scrub = Enable`** (в `02_Performance_OC`; аппаратно маскируется флагом ECC — `0%` нагрузки на не-ECC ОЗУ). Также в `02_Performance_OC` отключены **`SATA/sSATA AHCI ALPM`** и **`LPM`**, и задан **`MC0/MC1 PKGC CLK GATE DISABLE`** (`значение 1 = Disable в BIOS`, путь `CPU - Advanced PM Tuning → Program CSR_SAPMCTL`). |
 | **PCIe / Above 4G / MRRS** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` для UEFI/ReBAR), `PCI Express Settings`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`, **`Maximum Read Request`** (`2048 Bytes` в `02_Performance_OC`, `Auto` в `01_Safe_Stock` — в v2.2 открыт для ручной правки!). |
 | **Защита от перегрева (PROCHOT#)** | `IntelRCSetup → Advanced Power Management Configuration → CPU Thermal Management` | Держите `Bi-directional PROCHOT# = Bidirectional (normal input response)` (защита VRM). |
 | **Кривая вентилятора CPU** | `Advanced → Hardware Monitor` | Точки `T1–T5`, `PWM1–PWM4`. В v2.1+ `T5` (`78°C`) корректно задаёт порог 100% оборотов и переживает сон S3. |
@@ -238,6 +238,25 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 | Синие экраны / зависания на `02_Performance_OC` (Xeon E5 v3) | Неудачный кристалл не держит `−50 / −40 мВ` или лок Ring | Зайдите в `IntelRCSetup → OverClocking Feature` и ослабьте оффсеты (например `−30 / −20 мВ` или `0 / 0`) или поставьте `CLR Max OC Ratio = 0` → `F10`. Перепрошивать BIOS больше не нужно! |
 | Чёрный экран на старой видеокарте в UEFI-режиме | Видеокарта без UEFI GOP (`CsmDxe` безусловно блокирует CSM при активном Secure Boot, поэтому включить CSM в меню `2_UEFI_SB`/`3_UEFI_SB_TPM` невозможно) | Прошейте **`1_Legacy`** (временно установив видеокарту с UEFI GOP для прошивки из Windows либо через программатор CH341A) |
 | Загрузочная флешка (Ventoy, Linux, WinPE/Strelec) выдаёт `Security Violation` | Сторонний `.efi` не подписан ключами MS | Для загрузчиков на базе `shim` (например, Ventoy с включённым Secure Boot Support или Linux) в `MokManager` выберите `Enroll hash from disk` / `Enroll key from disk`; для неподписанных автономных `.efi`-утилит (без `shim`) используйте `1_Legacy` |
+
+---
+
+## Независимая верификация v2.2
+
+Все **6 сборок / 12 бинарных образов** `v2.2` прошли 9-ступенчатый оффлайн-аудит (`Capstone` + строгий парсер `IFR` + OpenSSL `CMS` + проверка `NVRAM` / `FV0` / `FV1` / `_FIT_`) и независимую проверку C++-утилитами **`UEFITool NE alpha 76`** (`UEFIExtract` + `UEFIFind`: **0/24** следов `PKfail`, **0/6** `dbtDefault`, **3/3** `StdDefaults`, **3/3** Intel microcode).
+
+![Сводка верификации v2.2](docs/v22_scorecard.png)
+
+<details>
+<summary><b>Подробные логи верификации (9/9 Verifier + C++ UEFITool NE A76)</b></summary>
+
+#### 1. Независимая проверка всех 12 образов (9/9 PASS)
+![Лог верификатора v2.2 (9/9 PASS)](docs/v22_verifier_9of9.png)
+
+#### 2. Независимый C++-аудит UEFITool NE alpha 76 (`UEFIExtract` + `UEFIFind`)
+![Аудит UEFITool NE alpha 76 для v2.2](docs/v22_uefitool_ne_audit.png)
+
+</details>
 
 ---
 
