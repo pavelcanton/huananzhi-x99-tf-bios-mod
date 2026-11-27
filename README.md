@@ -1,10 +1,10 @@
 # Huananzhi X99-TF — модифицированный BIOS v2.1.2 (GHX99015, 25.05.2020)
 
+**🇷🇺 Русский** | [🇬🇧 English](README.en.md)
+
 Пакет готовых прошивок **v2.1.2** (бинарники BIOS идентичны `v2.1` / `v2.1.1`, усилена безопасность скриптов прошивки/ReBAR и уточнена документация) для **HUANANZHI X99-TF** на базе сборки [Koshak1013](https://github.com/Koshak1013/HuananzhiX99_BIOS_mods) (`GHX99015`, 25.05.2020): анлок Turbo Boost для Xeon E5 v3, **живой андервольт и лок Ring/Uncore прямо в меню BIOS с реальным сохранением по `F10`**, 25 разблокированных подменю, расшитые лимиты питания, ReBAR, чистый Secure Boot **2011 + 2023 без уязвимости `PKfail` + 443 отзыва `dbx`**, TPM 2.0, работающий `Intel VT-x` и исправленный SmartFan V3 (с поддержкой S3-сна).
 
 Вместо 4 жёстких тиров андервольта из v1.1 теперь достаточно **2 профилей × 3 режима = 6 сборок** — все параметры разгона и тайминги ОЗУ можно настраивать в моменте в BIOS Setup, а сброс CMOS гарантированно возвращает безопасный `Safe Stock`.
-
-*English summary is at the bottom.*
 
 > [!TIP]
 > **Скачать всё одним архивом:** [страница Releases](../../releases/latest) → файл `X99TF_GHX99015_BIOS_Pack_v2.1.2.zip`. Или берите отдельные файлы прямо из папок ниже.
@@ -23,7 +23,7 @@
 > * **`Enable_ReBAR_Windows.bat` (безопасность):** полностью убраны инъекции аргументов (`set "_ARG1=%~1"` и проброс сырого `%*`); лаунчер безопасно читает аргументы и передаёт в PowerShell только строго разрешённый список (`-Action Enable|Disable|Status`), корректно завершаясь без `pause` при любых CLI-аргументах.
 > * **`Enable_ReBAR_Windows.ps1`:** при неожиданной ошибке чтения UEFI-переменной `ReBarState` (кроме кодов `122`/`203`) скрипт немедленно завершается (`exit 1`) без попытки записи в NVRAM.
 > * **`flash.bat`:** исправлена регулярка проверки `SHA256SUMS.txt` под `call` (`\A...\z` без символа `^`), усилена проверка SMBIOS-имени платы и синхронизирована финальная подсказка про 10-секундный холодный старт.
-> * **`README.md`:** исправлены точный путь `UFS` (`IntelRCSetup → Advanced Power Management Configuration`), описание `MC0/MC1 PKGC CLK GATE DISABLE` (`значение 1 = Disable в BIOS`), упоминание `SATA/sSATA AHCI ALPM` и `LPM`, точные названия пунктов IFR (`CPU - Advanced PM Tuning`, `CPU VCCin Voltage Level`, `VccIo Voltage Control`, `VCCU Voltage Offset`) и уточнение по `MokManager` (для загрузчиков на базе `shim`).
+> * **Документация (`README.md` + `README.en.md`):** исправлены точный путь `UFS` (`IntelRCSetup → Advanced Power Management Configuration`), описание `MC0/MC1 PKGC CLK GATE DISABLE` (`значение 1 = Disable в BIOS`), упоминание `SATA/sSATA AHCI ALPM` и `LPM`, точные названия пунктов IFR (`CPU - Advanced PM Tuning`, `CPU VCCin Voltage Level`, `VccIo Voltage Control`, `VCCU Voltage Offset`), уточнение по `MokManager` (для загрузчиков на базе `shim`) и вынесена полноценная английская версия в [`README.en.md`](README.en.md).
 >
 > **Обслуживающий релиз v2.1.1 (все 12 образов BIOS байт-в-байт идентичны `v2.1`):**
 > * **`Enable_ReBAR_Windows.ps1` / `.bat`:** строгая проверка 1-байтного контракта `ReBarDxe` (`DataSize = 1`; переменные `>1 B` помечаются `[WARN]` как неактивные), корректный вывод инструкций (без подсказки Enable при `-Action Disable`), точная 2-перезагрузочная инструкция Legacy → UEFI, обработка `FirmwareType = Unknown` и `try/catch` вокруг `EnablePrivilege()`; в `.bat` добавлены `DisableDelayedExpansion` и поддержка CLI-аргументов.
@@ -154,7 +154,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 
 ## Гайд по разгону и тюнингу в BIOS
 
-В **v2.1** все ключевые меню открыты, `Power Technology = Custom` уже безопасно активирован, а правки сохраняются по `F10`. Нажмите **`Del`** при старте (задержка `Timeout = 3 сек`).
+В **v2.1+** все ключевые меню открыты, `Power Technology = Custom` уже безопасно активирован, а правки сохраняются по `F10`. Нажмите **`Del`** при старте (задержка `Timeout = 3 сек`).
 
 ### Карта основных параметров для повышения производительности
 
@@ -170,7 +170,7 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 | **Ускорение контроллера памяти (IMC)** | `IntelRCSetup → Memory Configuration` | `Page Policy → Page Policy = Open`; `Memory Training → Turnaround Time Optimization = Enable`; `Memory Thermal` → **`Set Throttling Mode = Disabled`**, **`MDLL Off = Disabled`**, `Memory Power Savings Mode = User Defined` → **`Memory Power Savings Advanced Options`** (`CKE Throttling = Off`, `Opportunistic SR = Disabled`); `Memory RAS Configuration` → `Patrol/Demand Scrub = Disable`. Также в `02_Performance_OC` отключены **`SATA/sSATA AHCI ALPM`** и **`LPM`**, и задан **`MC0/MC1 PKGC CLK GATE DISABLE`** (`значение 1 = Disable в BIOS`, путь `CPU - Advanced PM Tuning → Program CSR_SAPMCTL`). |
 | **PCIe / Above 4G** | `Advanced → PCI Subsystem Settings` | `Above 4G Decoding` (`Enabled` для UEFI/ReBAR), `PCI Express Settings`: `Relaxed Ordering = Enabled`, `Extended Tag = Enabled`. |
 | **Защита от перегрева (PROCHOT#)** | `IntelRCSetup → Advanced Power Management Configuration → CPU Thermal Management` | Держите `Bi-directional PROCHOT# = Bidirectional (normal input response)` (защита VRM). |
-| **Кривая вентилятора CPU** | `Advanced → Hardware Monitor` | Точки `T1–T5`, `PWM1–PWM4`. В v2.1 `T5` (`78°C`) корректно задаёт порог 100% оборотов и переживает сон S3. |
+| **Кривая вентилятора CPU** | `Advanced → Hardware Monitor` | Точки `T1–T5`, `PWM1–PWM4`. В v2.1+ `T5` (`78°C`) корректно задаёт порог 100% оборотов и переживает сон S3. |
 
 > [!TIP]
 > **Пошаговый план тюнинга после прошивки `02_Performance_OC`:**
@@ -242,38 +242,6 @@ $db  = [System.Text.Encoding]::ASCII.GetString((Get-SecureBootUEFI -Name db).Byt
 
 ---
 
-## English summary
+## Лицензия
 
-* **Download all builds as one archive:** [Releases](../../releases/latest) → `X99TF_GHX99015_BIOS_Pack_v2.1.2.zip`, or grab individual files from the folders.
-* **For HUANANZHI X99-TF (`GHX99014` / `GHX99015`) only.** Do not flash onto any other X99 motherboard.
-* **What's new in v2.1.2 (maintenance release; all 12 BIOS `.bin` images are byte-for-byte identical to `v2.1` and `v2.1.1`):**
-  * **Hardened `Enable_ReBAR_Windows.bat`:** eliminates command/quote injection from `_ARG1=%~1` and raw `%*` forwarding; captures arguments safely and forwards only strictly allowlisted `-Action Enable|Disable|Status` flags to PowerShell (exits cleanly without `pause` on any CLI args).
-  * **Hardened `Enable_ReBAR_Windows.ps1`:** aborts immediately (`exit 1`) on unexpected `ReBarState` read errors (other than Win32 `122`/`203`) instead of continuing into `WriteReBar`.
-  * **Hardened `flash.bat`:** replaces `^`/`$` with `\A...\z` inside `call` SHA-256 verification regex, tightens SMBIOS board matching, and aligns post-flash guidance with the 10-second cold shutdown.
-  * **Documentation accuracy (`README.md`):** corrects the `UFS` menu path (`IntelRCSetup → Advanced Power Management Configuration`, `0 = Enabled`, `1 = Disabled`), clarifies `MC0/MC1 PKGC CLK GATE DISABLE` (`1 = Disable` in BIOS) and `SATA/sSATA AHCI ALPM` + `LPM`, uses exact IFR titles (`CPU - Advanced PM Tuning`, `CPU VCCin Voltage Level`, `VccIo Voltage Control`, `VCCU Voltage Offset`), and notes that `MokManager` applies to `shim`-based loaders (e.g. Ventoy).
-* **What's new in v2.1.1 (maintenance release; all 12 BIOS `.bin` images are byte-for-byte identical to `v2.1`):**
-  * **Hardened `Enable_ReBAR_Windows.ps1` / `.bat`:** enforces `ReBarDxe`'s exact 1-byte `DataSize = 1` contract (warns if `>1B`), gates post-write BIOS hints to `-Action Enable`, documents the mandatory 2-reboot Legacy → UEFI sequence (`Video = UEFI` → reboot → `CSM Support = Disabled` + `Above 4G Decoding = Enabled`), handles `FirmwareType = Unknown` and `EnablePrivilege()` errors cleanly, and forwards `%*` CLI arguments in the `.bat` launcher.
-  * **Hardened `flash.bat`:** adds `chcp.com 65001 <nul >nul`, trims trailing `\` on root drives (`Z:\`), differentiates `BAD`/`MISSING`/`ERR` SHA-256 errors, and removes inaccurate CSM recovery text on Secure Boot builds.
-  * **Documentation accuracy (`README.md`):** explains that `CsmDxe` unconditionally blocks CSM while Secure Boot is active (use `mbr2gpt` from UEFI WinPE or flash `1_Legacy`), documents the 2-reboot ReBAR transition, syncs all IFR option/menu names, lists all 10 pre-filled Micron timings (`tCL=12..tCWL=11`), and adds platform NO-OP / S3 ReBAR notes.
-* **What's new in v2.1 (over v2.0):**
-  * **Fixed `StdDefaults` NVRAM GUID (`4599D26F-...`)**: prevents the first-boot NVRAM Bank Swap that silently reset `02_Performance_OC` back to `01_Safe_Stock` in `v2.0`; all 23 `PerfOC` settings (`−50/−40 mV`, Ring lock, C-States OFF, IMC tweaks) now apply on cold boot #1.
-  * **Fixed Intel VT-x (`MSR Lock Control = Enable`)**: locks `IA32_FEATURE_CONTROL` (`MSR 0x3A[0]`) and `MSR 0xE2[15]` so hardware virtualization works out of the box.
-  * **Fixed `flash.bat` long/non-ASCII paths**: uses short relative paths for Intel FPT (eliminates `Error 200` on paths >127 chars or with spaces/Cyrillic).
-* **Core v2.x features (live-verified on hardware):**
-  * **Real `F10` NVRAM persistence fixed (`NvramDxe`/`NvramSmm` `0x70 → 0x72`):** BIOS settings no longer reset to defaults on every reboot!
-  * **Live BIOS undervolt & Ring/Uncore lock (`NalexOverclock V4.2` DXE+PEI):** adjust Core/CLR/SA offsets and hardware `MSR 0x620` Ring lock (`CLR Max OC Ratio = 30` auto-clamps to each Xeon v3's safe max, `0` = dynamic; skipped on v4) directly in BIOS Setup with full S3 BootScript support — no more reflashing just to change undervolt tiers!
-  * **`PKfail` (CVE-2024-8105) eliminated + March 2026 `dbx`:** compromised `AMI Test PK` completely purged from `PK`, `PKDefault`, and `dbtDefault`; replaced with a clean 2048-bit **`HUANANZHI X99-TF Community Platform Key`** (`2026–2056`, ephemeral private key shredded immediately after signing), Microsoft **2011 + 2023** `KEK`/`db` CAs, official March 2026 Microsoft **`dbx` (443 SHA-256 revocations)**, and clean native 43-byte AMI AuthVar ExtHeaders.
-  * **Platform bugfixes & 25 unlocked menus:** SmartFan V3 `70°C → 78°C` `CRITICAL_TEMP` + S3 fix (`F217C2E9`), `Power Technology = Custom` fixed & enabled by default (un-grays `CPU P/C/T State` & `C1E`), RAPL below-P1 clamp fixed (`Pkg Clmp Lim1/2 = 0`), `_FIT_` microcode pointers fixed (`306F2` removed for v3 unlock, `406F1 rev 0xB000040` kept for v4), C612 PCH Thermal sensor enabled, `Timeout = 3s`, `XHCI Idle L1 = Disabled`, `PCIe Relaxed Ordering / Extended Tag = Enabled`, `ASPM = Disabled`.
-* **Clean 2 × 3 matrix (6 builds / 12 binaries):**
-  * Profiles: **`01_Safe_Stock`** (`0/0 mV`, dynamic Ring, `C1E/C2/C3 ON, C6 OFF`, IMC/RAM Auto, All Cores — best for v4 / cautious start) and **`02_Performance_OC`** (`−50/−40 mV`, auto-clamped Ring lock, C-States OFF, safe universal IMC + AHCI ALPM/LPM + `CSR_SAPMCTL` tweaks, **RAM & `tREFI` Auto**, All Cores — recommended for Xeon v3). **Clear CMOS (`JCMOS`) always rolls back to `01_Safe_Stock` in every build.**
-  * Modes: `1_Legacy` (CSM), `2_UEFI_SB` (Pure UEFI + ReBAR + Secure Boot), `3_UEFI_SB_TPM` (+ TPM 2.0 for `TPM-LPC-X2` / Infineon SLB9665 on `JLPC1`/`DEBUG1`). Secure Boot and TPM remain hidden in BIOS menus, so pick the mode at flash time.
-* **Flashing:** run `flash.bat` as Administrator (auto-backs up 16 MB or 8 MB, flashes **only the 8 MB BIOS region**, and verifies). `*_16MB_CH341A.bin` files (clean stock FD + ME `9.1.37.1002`) are for external SPI programmers only.
-* **Post-flash:** rename `C:\Windows\System32\mcupdate_GenuineIntel.dll` for Xeon v3 unlock; convert MBR → GPT via `mbr2gpt` if switching to UEFI; tune deeper undervolt, `Cores Enabled`, `PL1/PL2` (`200W/250W` default — keep VRM cooled!), `tREFI = 32760`, and manual DDR4-2133 timings right inside BIOS Setup (`F10`).
-
----
-
-## Лицензия / License
-
-Автор сборки — **pavelcanton**. Скрипты и документация — **MIT** (см. [`LICENSE`](LICENSE)). Модули BIOS, Intel ME, микрокоды и Intel FPT (`tools/`) принадлежат своим правообладателям. Всё предоставляется «как есть», прошивка — на ваш страх и риск.
-
-*Built by pavelcanton. Scripts and docs are MIT-licensed. Firmware modules, Intel ME, microcode and Intel FPT belong to their respective owners. Provided as is; flash at your own risk.*
+Автор сборки — **pavelcanton**. Скрипты и документация распространяются под лицензией **MIT** (см. [`LICENSE`](LICENSE)). Модули BIOS, Intel ME, микрокоды и Intel FPT (`tools/`) принадлежат своим правообладателям. Всё предоставляется «как есть», прошивка — на ваш страх и риск.
